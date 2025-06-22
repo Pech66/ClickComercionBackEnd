@@ -20,7 +20,7 @@ export class TiendaController {
 
     }
 
-    @Post('CrearTienda/AdminTienda')
+    @Post('CrearTienda')
     @ApiOperation({ summary: 'Crear una nueva tienda y vincular al usuario actual' })
     async crearTienda(
       @Body() dtoCrearTienda: DtoCrearTienda,
@@ -35,7 +35,7 @@ export class TiendaController {
         await this.authService.vincularUsuarioConTienda(usuario.id, tiendaCreada.Id);
 
         //Responder con la tienda creada
-        return tiendaCreada;
+        return {mensaje: 'Tienda creada y vinculada correctamente', tiendaCreada};
       } catch (error) {
         throw new BadRequestException(error.message || 'Error al crear la tienda');
       }

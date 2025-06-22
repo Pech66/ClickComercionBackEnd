@@ -47,7 +47,7 @@ export class MailService {
         <h1 style="color: #2563eb;">Verificación de Cuenta</h1>
         <p>Tu código de verificación es:</p>
         <div style="background: #f3f4f6; padding: 10px; text-align: center; margin: 20px 0;">
-          <h2 style="letter-spacing: 3px; color: #059669;">${codigo}</h2>
+          <h2 style="letter-spacing: 3px; color:rgb(3, 138, 95);">${codigo}</h2>
         </div>
         <p><small>Este código expirará en 2 minutos</small></p>
       </div>

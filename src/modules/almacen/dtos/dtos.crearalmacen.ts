@@ -10,15 +10,6 @@ export class DtoCrearAlmacen {
     @IsString()
     nombre: string;
     
-    @ApiProperty({
-        description: 'Id de la tienda a la que pertenece el almacén',
-    })
-    Id_tienda: string;
-
-
-    @ApiProperty({
-        description: 'Id del producto asociado al almacén',
-    })
-    Id_producto: string;
+    
 
 }

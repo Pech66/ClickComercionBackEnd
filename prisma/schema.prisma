@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "./generated/prisma"
 }
 
 datasource db {
@@ -8,14 +9,12 @@ datasource db {
 }
 
 model almacen {
-  Id          String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  nombre      String?   @db.VarChar(100)
-  Id_tienda   String?   @db.Char(36)
-  Id_producto String?   @db.Char(36)
-  tienda      tienda?   @relation(fields: [Id_tienda], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "almacen_ibfk_1")
-  producto    producto? @relation(fields: [Id_producto], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "almacen_ibfk_2")
+  Id        String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  nombre    String?    @db.VarChar(100)
+  Id_tienda String?    @db.Char(36)
+  tienda    tienda?    @relation(fields: [Id_tienda], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "almacen_ibfk_1")
+  producto  producto[]
 
-  @@index([Id_producto], map: "Id_producto")
   @@index([Id_tienda], map: "Id_tienda")
 }
 
@@ -65,10 +64,13 @@ model producto {
   preciokilo        Decimal?         @db.Decimal(10, 2)
   unidaddemedida    String?          @db.VarChar(100)
   esgranel          Boolean?
-  almacen           almacen[]
+  Id_almacen        String?          @db.Char(36)
   categoria         categoria[]
   detallesventa     detallesventa[]
+  almacen           almacen?         @relation(fields: [Id_almacen], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "producto_ibfk_1")
   productocompra    productocompra[]
+
+  @@index([Id_almacen], map: "Id_almacen")
 }
 
 model productocompra {

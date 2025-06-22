@@ -1,12 +1,9 @@
-import { Body, ConflictException, Controller, createParamDecorator, Delete, ExecutionContext, Get, Param, Post, Put, Req, UnauthorizedException, UseGuards } from "@nestjs/common";
+import { Body, ConflictException, Controller,  Delete,  Get, HttpCode, Param, Post, Put, Req, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { DtoRegistraUsuario } from "./dtos/dto.registra.usuario";
 import { DtoVerificacion } from "./dtos/dto.verificacion";
 import { DtoLoginUsuario } from "./dtos/dto.login.usuario";
 import { JwtAuthGuard } from "./Jwt/jwtAuthGuard";
-import { Roles } from "./roles/roles.decorator";
-import { RolesGuard } from "./roles/roles.guard";
-import { Rol } from "./roles/roles.enum";
 import { DtoEditarUsuario } from "./dtos/dto.editar.usuario";
 import { DtoReenvio } from "./dtos/dto.reenvio";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
@@ -38,12 +35,13 @@ export class AuthController {
     try {
       return await this.authService.verificarCuenta(dtoVerificacion);
     } catch (error) {
-      if (error instanceof ConflictException) {
+      if (error) {
         throw error;
       }
       throw new ConflictException('Error al verificar la cuenta');
     }
   }
+
 
   @Post('reenviar-codigo')
   @ApiOperation({ summary: 'Reenviar código de verificación' })
@@ -78,11 +76,6 @@ export class AuthController {
     return this.authService.obtenerDatosUsuario(usuarioId);
   }
   
-  
-  
-  async recupeararContraseña(@Body() ){
-  
-  }
   
 
 
