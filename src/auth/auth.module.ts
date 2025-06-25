@@ -10,6 +10,8 @@ import { ResendModule } from 'src/service/mailer/resend.module';
 import { MailService } from 'src/service/mailer/mail/mail.service';
 import { VerificationService } from 'src/service/mailer/verification.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CloudinaryModule } from 'src/service/cloudinary/cloudinary.module';
+
 
 @Module({
   imports: [
@@ -24,6 +26,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
     PrismaModule,
     ResendModule,
+    CloudinaryModule,
   ],
   providers: [
     AuthService,
@@ -31,6 +34,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     ValidacionService,
     MailService,
     VerificationService,
+    AuthService,
   ],
   controllers: [AuthController],
   exports: [JwtModule, JwtStrategy, PassportModule, VerificationService,AuthService ],

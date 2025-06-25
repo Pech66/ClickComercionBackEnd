@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "src/prisma/prisma.service";
 import { DtoRegistraUsuario } from "./dtos/dto.registra.usuario";
@@ -9,6 +9,8 @@ import { DtoEditarUsuario } from "./dtos/dto.editar.usuario";
 import { VerificationService } from "src/service/mailer/verification.service";
 import { ValidacionService } from "src/components/validaciondatos/validacionService";
 import { DtoCrearTienda } from "src/modules/tienda/dtos/dto.creartienda";
+import { UsuarioActual } from "src/components/decoradores/usuario.actual";
+import { CloudinaryService } from "src/service/cloudinary/cloudinary.service";
 
 
 
@@ -19,6 +21,8 @@ export class AuthService{
         private validationService: ValidacionService,
         private jwtService: JwtService,
         private verificationService: VerificationService,
+        private cloudinaryService: CloudinaryService,
+        
     ){}
     
     async registrarUsuarioAdminTienda( registrarUsuarioDto: DtoRegistraUsuario){
@@ -98,63 +102,64 @@ export class AuthService{
     }
 
     
-    async login(dtoLoginUsuario : DtoLoginUsuario) {
-        try {
+    async login(dtoLoginUsuario: DtoLoginUsuario) {
+    try {
+        // Validaciones del formato de los datos
+        this.validationService.validateEmailFormat(dtoLoginUsuario.email);
+        this.validationService.validatePassword(dtoLoginUsuario.contrasena);
 
-            //Validaciones del formato de los datos
-            this.validationService.validateEmailFormat(dtoLoginUsuario.email);
-            this.validationService.validatePassword(dtoLoginUsuario.contrasena);
+        // Consultar el usuario por email
+        const usuario = await this.prisma.usuarios.findUnique({
+            where: { email: dtoLoginUsuario.email }
+        });
 
-            //Consultar el usuario por email
-            const usuario = await this.prisma.usuarios.findUnique({
-                where: {
-                    email: dtoLoginUsuario.email
-                }
-            });
+        // Si el usuario no existe
+        if (!usuario) {
+            throw new UnauthorizedException("Usuario no encontrado");
+        }
 
-            //Verificar las credenciales 
-            if(!usuario || !(await bcrypt.compare(dtoLoginUsuario.contrasena, usuario.contrasena))){
-                throw new UnauthorizedException("credendiales invalidad");
-            }
+        // Verificar la contraseña
+        const passwordValida = await bcrypt.compare(dtoLoginUsuario.contrasena, usuario.contrasena);
+        if (!passwordValida) {
+            throw new UnauthorizedException("Credenciales inválidas");
+        }
 
-            //Verificar si el usuario esta verificado
-            if (usuario.rol === 'ADMIN_TIENDA' && !usuario.verificado) {
-              throw new UnauthorizedException('Debes verificar tu email primero');
-            }
+        // Verificar si el usuario esta verificado
+        if (usuario.rol === 'ADMIN_TIENDA' && !usuario.verificado) {
+            throw new UnauthorizedException('Debes verificar tu email primero');
+        }
 
-            //Generar el token JWT
-            const payload = { 
-                sub: usuario.Id,
+        const payload = { 
+            sub: usuario.Id,
+            email: usuario.email,
+            rol: usuario.rol,
+            tiendaId: usuario.Id_tienda,
+            verificado: usuario.verificado,
+            activo: usuario.activo,
+        };
+
+        return {
+            access_token: this.jwtService.sign(payload),
+            usuario: {
+                id: usuario.Id,
                 email: usuario.email,
                 rol: usuario.rol,
                 tiendaId: usuario.Id_tienda,
                 verificado: usuario.verificado,
                 activo: usuario.activo,
-            };
-
-            return {
-                access_token: this.jwtService.sign(payload),
-                usuario: {
-                    id: usuario.Id,
-                    email: usuario.email,
-                    rol: usuario.rol,
-                    tiendaId: usuario.Id_tienda,
-                    verificado: usuario.verificado,
-                    activo: usuario.activo,
-                }
-            };
-
-        } catch (error) {
-            // Manejo específico de errores de validación
-            if (error instanceof Error && error.message.includes('El formato del email')) {
-              throw new UnauthorizedException('Formato de email inválido');
             }
-            if (error instanceof Error && error.message.includes('La contraseña')) {
-              throw new UnauthorizedException('Contraseña no cumple con los requisitos');
-            }
-            throw error;
+        };
+
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('El formato del email')) {
+            throw new UnauthorizedException('Formato de email inválido');
         }
+        if (error instanceof Error && error.message.includes('La contraseña')) {
+            throw new UnauthorizedException('Contraseña no cumple con los requisitos');
+        }
+        throw error;
     }
+}
 
     async reenviarCodigo(email: string): Promise<void> {
       return await this.verificationService.reenviarCodigo(email);
@@ -169,8 +174,8 @@ export class AuthService{
          email: true,
          rol: true,
          Id_tienda: true,
-         verificado: true,
-         activo: true,
+         fotoUrl: true,
+
        },
      });
      if (!usuario) throw new UnauthorizedException('Usuario no encontrado');
@@ -185,89 +190,39 @@ export class AuthService{
     } 
 
     async obtenerUsuarioPorId(id: string) {
-        // Validar el formato del ID
-        try {
-            const usuario = await this.prisma.usuarios.findUnique({
-                where: { Id: id },
-            });
-
-            if (!usuario) {
-                throw new UnauthorizedException("Usuario no encontrado");
-            }
-
-            return {
-                id: usuario.Id,
-                email: usuario.email,
-                rol: usuario.rol,
-                tiendaId: usuario.Id_tienda,
-                verificado: usuario.verificado,
-                activo: usuario.activo,
-            };
-        } catch (error) {
-            throw new UnauthorizedException("Error al obtener el usuario: " + error.message);
-        }
+        return this.prisma.usuarios.findUnique({
+          where: { Id: id },
+          include: {
+            tienda: true, // O elimina esto si no quieres traer la tienda
+          },
+        });
     }
 
-
-    async obtenerTodosUsuarios() {
-        try {
-            const usuarios = await this.prisma.usuarios.findMany({
-                select: {
-                    Id: true,
-                    email: true,
-                    rol: true,
-                    Id_tienda: true,
-                    verificado: true,
-                    activo: true,
-                },
-            });
-
-            return usuarios;
-        } catch (error) {
-            throw new UnauthorizedException("Error al obtener los usuarios: " + error.message);
+    async editarUsuario(id: string, dtoEditarUsuario: DtoEditarUsuario, file?: Express.Multer.File) {
+      try {
+        let fotoUrl: string | undefined;
+        if (file) {
+            const resultado = await this.cloudinaryService.uploadFile(file);
+            fotoUrl = resultado.secure_url;
         }
+
+        const usuarioActualizado = await this.prisma.usuarios.update({
+            data: {
+                nombre: dtoEditarUsuario.nombre,
+                fotoUrl: fotoUrl,
+                contrasena: dtoEditarUsuario.contrasena ? await bcrypt.hash(dtoEditarUsuario.contrasena, 10) : undefined,
+            },
+            where: { Id: id },
+            
+        });
+        return usuarioActualizado;
+        
+      } catch (error) {
+        throw new BadRequestException("Error al editar el usuario: " + error.message);
+      }
     }
 
-
-    async editarUsuario(id: string, dtoEditarUsuario: DtoEditarUsuario) {
-        try {
-            // Validaciones del formato de los datos
-            if (dtoEditarUsuario.contrasena) {
-                this.validationService.validatePassword(dtoEditarUsuario.contrasena);
-            }
-
-            const usuarioExistente = await this.prisma.usuarios.findUnique({
-                where: { Id: id },
-            });
-
-            if (!usuarioExistente) {
-                throw new UnauthorizedException("Usuario no encontrado");
-            }
-
-            const datosActualizados = {
-                ...dtoEditarUsuario,
-                contrasena: dtoEditarUsuario.contrasena ? await bcrypt.hash(dtoEditarUsuario.contrasena, 10) : usuarioExistente.contrasena,
-            };
-
-            const usuarioActualizado = await this.prisma.usuarios.update({
-                where: { Id: id },
-                data: datosActualizados,
-            });
-
-            return {
-                id: usuarioActualizado.Id,
-                email: usuarioActualizado.email,
-                rol: usuarioActualizado.rol,
-                tiendaId: usuarioActualizado.Id_tienda,
-                verificado: usuarioActualizado.verificado,
-                activo: usuarioActualizado.activo,
-            };
-        } catch (error) {
-            throw new UnauthorizedException("Error al editar el usuario: " + error.message);
-        }
-    }
-
-    async eliminarUsuario(id: string) {
+    async eliminarCuenta(id: string) {
         try {
             const usuarioExistente = await this.prisma.usuarios.findUnique({
                 where: { Id: id },
@@ -286,6 +241,15 @@ export class AuthService{
             throw new UnauthorizedException("Error al eliminar el usuario: " + error.message);
         }
     }
+    
+    
+
+
+
+
+    
+
+    
 
 
 

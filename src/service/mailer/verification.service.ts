@@ -1,79 +1,130 @@
-
 import { Injectable } from '@nestjs/common';
 import { randomInt } from 'crypto';
-import { MailService } from './mail/mail.service'; 
+import { MailService } from './mail/mail.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class VerificationService {
-  private readonly codigos = new Map<string,
-   { codigo: string; expiracion: Date ; intentos: number }>();
+  private readonly codigos = new Map<
+    string,
+    { codigo: string; expiracion: number; creado: number; intentos: number }
+  >();
 
-  constructor(private readonly mailService: MailService) {}
+  constructor(
+    private readonly mailService: MailService,
+    private readonly prisma: PrismaService
+  ) {}
 
-  async enviarCodigoVerificacion(email: string ): Promise<void> {
-    const codigo = randomInt(100000, 999999).toString(); // Código de 6 dígitos
-    const expiracion = new Date(Date.now() + 1 * 60 * 1000); // Expira en 1 minutos
+  async enviarCodigoVerificacion(email: string): Promise<void> {
+    const registro = this.codigos.get(email);
+    if (registro && Date.now() < registro.expiracion) {
+      const segundosRestantes = Math.ceil((registro.expiracion - Date.now()) / 1000);
+      throw new Error(`Debes esperar ${segundosRestantes} segundos antes de solicitar otro código.`);
+    }
 
-    this.codigos.set(email,
-      {
-        codigo,
-        expiracion,
-        intentos: 3 // Intentos permitidos
-      });
+    const codigo = randomInt(100000, 999999).toString();
+    // Solo la fecha (sin hora) en la base de datos, ajustada a México
+    const zonaHorariaMexico = 'America/Mexico_City';
+    const fechaMexico = new Date(
+      new Date().toLocaleString('en-US', { timeZone: zonaHorariaMexico })
+    );
+    
 
-      await this.mailService.envioVerificacion(email, codigo);
+    // Expira en 2 minutos desde ahora
+    const ahora = Date.now();
+    const expiracion = ahora + 2 * 60 * 1000;
+
+    this.codigos.set(email, {
+      codigo,
+      expiracion,
+      creado: ahora,
+      intentos: 3,
+    });
+
+    // Guardar solo la fecha en la base de datos
+    await this.prisma.usuarios.update({
+      where: { email },
+      data: {
+        codigoVerificacion: codigo,
+        codigoVerificacionExp: fechaMexico,
+      },
+    });
+
+    await this.mailService.envioVerificacion(email, codigo);
   }
 
   verificarCodigo(email: string, codigoIngresado: string): boolean {
     const registro = this.codigos.get(email);
-    
-    // Verificar si el registro existe
-    if (!registro){
-      return false; // No se encontró el registro
+
+    if (!registro) return false;
+
+    // Si ya no quedan intentos, eliminar y rechazar
+    if (registro.intentos <= 0) {
+      this.codigos.delete(email);
+      return false;
     }
 
-    
-    // Validar el código ingresado maximo 3 intentos
-    if (registro.intentos > 3) {
-      registro.intentos++;
-      this.codigos.delete(email); // Eliminar después de 3 intentos fallidos
-      return false; // Demasiados intentos
+    // Expiración
+    if (Date.now() > registro.expiracion) {
+      this.codigos.delete(email);
+      return false;
     }
 
-    // Verificar si el código es correcto y no ha expirado
-    const isValid = registro.codigo === codigoIngresado &&
-        new Date() < registro.expiracion;
-
-    //Elimina si es valido o si ya espiró
-    if (isValid || new Date() >= registro.expiracion) {
-        this.codigos.delete(email)
-    }    
-    
-    return isValid;
+    // Verificación de código
+    if (registro.codigo === codigoIngresado) {
+      this.codigos.delete(email);
+      return true;
+    } else {
+      registro.intentos--;
+      // Si ya no quedan intentos
+      if (registro.intentos <= 0) {
+        this.codigos.delete(email);
+      }
+      return false;
+    }
   }
 
-
     async reenviarCodigo(email: string): Promise<void> {
-    const anterior = this.codigos.get(email);
-
-    // Si aún tiene un código válido, no reenviar
-    if (anterior && new Date() < anterior.expiracion) {
-      throw new Error('Ya tienes un código activo. Espera que expire.');
+    // Verificar si el usuario ya está verificado
+    const usuario = await this.prisma.usuarios.findUnique({
+      where: { email },
+      select: { verificado: true }
+    });
+  
+    if (usuario?.verificado) {
+      throw new Error('El usuario ya está verificado y no puede solicitar otro código.');
     }
-
-    // Generar nuevo código
+  
+    const anterior = this.codigos.get(email);
+    if (anterior && Date.now() < anterior.expiracion) {
+      const segundosRestantes = Math.ceil((anterior.expiracion - Date.now()) / 1000);
+      throw new Error(`Debes esperar ${segundosRestantes} segundos antes de solicitar otro código.`);
+    }
+  
     const nuevoCodigo = randomInt(100000, 999999).toString();
-    const nuevaExpiracion = new Date(Date.now() + 2 * 60 * 1000);
-
-    // Guardar en memoria
+    const zonaHorariaMexico = 'America/Mexico_City';
+    const fechaMexico = new Date(
+      new Date().toLocaleString('en-US', { timeZone: zonaHorariaMexico })
+    );
+  
+    const ahora = Date.now();
+    const nuevaExpiracion = ahora + 2 * 60 * 1000;
+  
     this.codigos.set(email, {
       codigo: nuevoCodigo,
       expiracion: nuevaExpiracion,
-      intentos: 0 // Reiniciar intentos,
+      creado: ahora,
+      intentos: 3,
     });
-
-    // Enviar nuevo código
+  
+    await this.prisma.usuarios.update({
+      where: { email },
+      data: {
+        codigoVerificacion: nuevoCodigo,
+        codigoVerificacionExp: fechaMexico,
+      },
+    });
+  
     await this.mailService.envioVerificacion(email, nuevoCodigo);
   }
-
 }

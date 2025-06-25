@@ -83,11 +83,11 @@ export class ValidacionService
     }
 
     validateNombre(nombre: string): boolean {
-        const nombreContexto = /^[a-zA-Z0-9\s]+$/;
+        const nombreContexto = /^[a-zA-Z\s]+$/;
         if (typeof nombre !== 'string' || nombre.trim() === '') {
             throw new Error('El nombre no es válido.');
         }
-        if (nombre.length < 3 || nombre.length > 50) {
+        if (nombre.length < 3 || nombre.length > 25) {
             throw new Error('El nombre debe tener entre 3 y 50 caracteres.');
         }
         return true;
@@ -103,5 +103,15 @@ export class ValidacionService
         return true;
     }
 
+    validateNumeroTelefono(telefono: string): boolean {
+        const telefonoContexto = /^\d{10}$/;
+        if (typeof telefono !== 'string' || telefono.trim() === '') {
+            throw new Error('El número de teléfono no es válido.');
+        }
+        if (!telefonoContexto.test(telefono)) {
+            throw new Error('El número de teléfono debe tener exactamente 10 dígitos.');
+        }
+        return true;
+    }
     
 }

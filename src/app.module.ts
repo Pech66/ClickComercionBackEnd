@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AdministracionModule } from './modules/administracion/administracion.module';
-import { DevolucionesModule } from './modules/devoluciones/devoluciones.module';
 import { CategoriaModule } from './modules/inventario/categoria/categoria.module';
 import { ProveedoresModule } from './modules/inventario/proveedores/proveedores.module';
 import { DetallesVentasModule } from './modules/ventas/detalles_ventas/detalles_ventas.module';
@@ -23,7 +21,6 @@ import { ProductosService } from './modules/productos/productos.service';
 import { ProductosModule } from './modules/productos/productos.module';
 import { CloudinaryModule } from './service/cloudinary/cloudinary.module';
 import { ValidacionModule } from './components/validaciondatos/validacion.module';
-import { ValidacionService } from './components/validaciondatos/validacionService';
 
 
 @Module({
@@ -32,11 +29,19 @@ import { ValidacionService } from './components/validaciondatos/validacionServic
       isGlobal: true, 
       envFilePath: '.env', 
     }),
-
-    AdministracionModule, VentasModule, VentasModule, CloudinaryModule,
-    CategoriaModule, ProductosModule, ProveedoresModule, ValidacionModule,
-    DetallesVentasModule, HistorialModule, AppModule, AuthModule, TiendaModule, AlmacenModule ],
-  controllers: [AppController, ProductosController, HistorialController, TiendaController, AlmacenController],
+    AuthModule,
+    TiendaModule,
+    AlmacenModule,
+    ProductosModule,
+    VentasModule,
+    CloudinaryModule,
+    CategoriaModule,
+    ProveedoresModule,
+    ValidacionModule,
+    DetallesVentasModule,
+    HistorialModule,
+  ],
+  controllers: [AppController, ProductosController, HistorialController, TiendaController, AlmacenController,],
   providers: [AppService, ProductosService, HistorialService, HistorialService, TiendaService, AlmacenService],
 })
 export class AppModule {}
