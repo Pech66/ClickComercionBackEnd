@@ -4,60 +4,56 @@ import { DtoCategoria } from './dtos/dto.crearCategorita';
 
 @Injectable()
 export class CategoriaService {
-    constructor(
-        private prisma : PrismaService
-    ) {}
-    
-      async crearCategoria(dtoCategoria: DtoCategoria) {
-      // Puedes validar si el producto existe, etc.
-      return this.prisma.categoria.create({
-        data: {
-          nombre: dtoCategoria.nombre,
-          descripcion: dtoCategoria.descripcion,
-          Id_producto: dtoCategoria.Id_producto,
-        }
-      });
-    }
-  
-    async editarCategoria(idCategoria: string, dtoCategoria: DtoCategoria) {
-      const existe = await this.prisma.categoria.findUnique({
-        where: { Id: idCategoria }
-      });
-      if (!existe) throw new BadRequestException('La categoría no existe.');
-      return this.prisma.categoria.update({
-        where: { Id: idCategoria },
-        data: {
-          nombre: dtoCategoria.nombre,
-          descripcion: dtoCategoria.descripcion,
-          Id_producto: dtoCategoria.Id_producto,
-        }
-      });
-    }
-  
-    async eliminarCategoria(idCategoria: string) {
-      const existe = await this.prisma.categoria.findUnique({
-        where: { Id: idCategoria }
-      });
-      if (!existe) throw new BadRequestException('La categoría no existe.');
-      await this.prisma.categoria.delete({
-        where: { Id: idCategoria }
-      });
-      return { message: 'Categoría eliminada correctamente' };
-    }
-  
-    async obtenerCategoriasDeTienda(Id_producto: string) {
-      
-      const productos = await this.prisma.categoria.findMany({
-        where: { Id_producto: Id_producto },
-        select: { Id: true }
-      });
-      const productosIds = productos.map(p => p.Id);
-    
-      return this.prisma.categoria.findMany({
-        where: {
-          Id_producto: { in: productosIds }
-        }
-      });
-    }
+  constructor(private prisma: PrismaService) {}
 
+  async crearCategoria(dtocategoria: DtoCategoria, Id_tienda: string) {
+    // Verifica que la tienda exista si lo deseas (opcional)
+    if (!Id_tienda) throw new BadRequestException('Falta el Id de la tienda');
+    return await this.prisma.categoria.create({
+      data: {
+        nombre: dtocategoria.nombre,
+        descripcion: dtocategoria.descripcion,
+        Id_tienda: Id_tienda
+      }
+    });
+  }
+
+  async obtenerCategorias(Id_tienda: string) {
+    return await this.prisma.categoria.findMany({
+      where: { Id_tienda },
+      orderBy: { nombre: 'asc' }
+    });
+  }
+
+
+  async editarCategoria(idCategoria: string, dtocategoria: DtoCategoria, Id_tienda: string) {
+    // Asegura que la categoría pertenezca a la tienda
+    const categoria = await this.prisma.categoria.findUnique({ where: { Id: idCategoria } });
+    if (!categoria) throw new BadRequestException('La categoría no existe.');
+    if (categoria.Id_tienda !== Id_tienda) throw new BadRequestException('No tienes permiso para editar esta categoría.');
+
+    return await this.prisma.categoria.update({
+      where: { Id: idCategoria },
+      data: {
+        nombre: dtocategoria.nombre,
+        descripcion: dtocategoria.descripcion
+      }
+    });
+  }
+
+  async eliminarCategoria(idCategoria: string, Id_tienda: string) {
+    const categoria = await this.prisma.categoria.findUnique({ where: { Id: idCategoria } });
+    if (!categoria) throw new BadRequestException('La categoría no existe.');
+    if (categoria.Id_tienda !== Id_tienda) throw new BadRequestException('No tienes permiso para eliminar esta categoría.');
+
+    await this.prisma.categoria.delete({ where: { Id: idCategoria } });
+    return { message: 'Categoría eliminada correctamente' };
+  }
+
+  async obtenerCategoriasDeTienda(Id_tienda: string) {
+    return await this.prisma.categoria.findMany({
+      where: { Id_tienda },
+      orderBy: { nombre: 'asc' }
+    });
+  }
 }
