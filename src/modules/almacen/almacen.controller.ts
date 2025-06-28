@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/Jwt/jwtAuthGuard';
+import { JwtAuthGuard } from 'src/components/Jwt/jwtAuthGuard';
 import { DtoCrearAlmacen } from './dtos/dtos.crearalmacen';
 import { AlmacenService } from './almacen.service';
 
@@ -8,10 +8,14 @@ import { UsuarioActual } from 'src/components/decoradores/usuario.actual';
 
 import { AuthService } from 'src/auth/auth.service';
 import { DtoEditarAlmacen } from './dtos/dto.editaralmacen';
+import { RolesGuard } from 'src/components/roles/roles.guard';
+import { Roles } from 'src/components/roles/roles.decorator';
+import { Rol } from 'src/components/roles/roles.enum';
 
 @Controller('almacen')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard)
+@Roles(Rol.ADMIN_TIENDA)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AlmacenController {
     constructor(
         private readonly almacenService: AlmacenService,
@@ -20,6 +24,7 @@ export class AlmacenController {
 
 
     @Post('crear-almacen')
+    @ApiOperation({ summary: 'Crear un almacén propio' })
     async crearAlmacen(
       @Body() dto: DtoCrearAlmacen,
       @UsuarioActual() usuario,
@@ -36,6 +41,7 @@ export class AlmacenController {
     }
 
     @Get('obtenerMialmacen')
+    @ApiOperation({ summary: 'Obtener mi almacén' })
     async obtenerMiAlmacen(
       @UsuarioActual() usuario,
     ) {
