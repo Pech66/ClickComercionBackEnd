@@ -2,7 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsNumber } from "class-validator";
 
-export class DtoProducto {
+export class DtoProductoNormal {
     @IsString()
     @IsNotEmpty()
     @ApiProperty({ example: 'Laptop Dell XPS 13' })
@@ -29,27 +29,13 @@ export class DtoProducto {
     @ApiProperty({ example: 1000.00, required: false })
     precioporveedor?: number;
 
-    // PARA PRODUCTO POR KILO (puedes omitir estos campos para productos por unidad)
-    @Type(() => Number)
-    @IsOptional()
-    @IsNumber()
-    @ApiProperty({ example: 35.00, required: false })
-    precioKilo?: number;
-
-    @IsOptional()
-    @IsString()
-    @ApiProperty({ example: 'kg', required: false })
-    unidadMedida?: string;
-
-    @Type(() => Boolean)
-    @IsOptional()
-    @IsBoolean()
-    @ApiProperty({ example: true, required: false })
-    esgranel?: boolean;
-
-    // Clave: Hacer Id_almacen OPCIONAL
     @IsOptional()
     @IsString()
     @ApiProperty({ required: false, description: 'ID del almacén, se asigna en backend automáticamente' })
     Id_almacen?: string;
+
+    @IsOptional()
+    @IsString()
+    @ApiProperty({ required: false, description: 'ID de la categoría del producto, se asigna en backend automáticamente' })
+    Id_categoria?: string;
 }
