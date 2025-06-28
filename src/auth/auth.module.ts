@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import { JwtStrategy } from './Jwt/jwtStrategy';
+import { JwtStrategy } from '../components/Jwt/jwtStrategy';
 import { AuthController } from './auth.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { ValidacionService } from 'src/components/validaciondatos/validacionService';

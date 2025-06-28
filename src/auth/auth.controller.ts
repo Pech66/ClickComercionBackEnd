@@ -3,7 +3,7 @@ import { AuthService } from "./auth.service";
 import { DtoRegistraUsuario } from "./dtos/dto.registra.usuario";
 import { DtoVerificacion } from "./dtos/dto.verificacion";
 import { DtoLoginUsuario } from "./dtos/dto.login.usuario";
-import { JwtAuthGuard } from "./Jwt/jwtAuthGuard";
+import { JwtAuthGuard } from "../components/Jwt/jwtAuthGuard";
 import { DtoReenvio } from "./dtos/dto.reenvio";
 import { ApiBearerAuth, ApiBody, ApiOperation } from "@nestjs/swagger";
 import { UsuarioActual } from "../components/decoradores/usuario.actual";
@@ -136,6 +136,6 @@ export class AuthController {
 
   
 
-
+ 
 
 }

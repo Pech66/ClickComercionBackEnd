@@ -8,8 +8,6 @@ import { DtoLoginUsuario } from "./dtos/dto.login.usuario";
 import { DtoEditarUsuario } from "./dtos/dto.editar.usuario";
 import { VerificationService } from "src/service/mailer/verification.service";
 import { ValidacionService } from "src/components/validaciondatos/validacionService";
-import { DtoCrearTienda } from "src/modules/tienda/dtos/dto.creartienda";
-import { UsuarioActual } from "src/components/decoradores/usuario.actual";
 import { CloudinaryService } from "src/service/cloudinary/cloudinary.service";
 
 
@@ -144,9 +142,6 @@ export class AuthService{
                 id: usuario.Id,
                 email: usuario.email,
                 rol: usuario.rol,
-                tiendaId: usuario.Id_tienda,
-                verificado: usuario.verificado,
-                activo: usuario.activo,
             }
         };
 
