@@ -1,19 +1,21 @@
 import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, NotFoundException, Param, Post, Put, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { DtoCrearTienda } from './dtos/dto.creartienda';
-import { JwtAuthGuard } from 'src/auth/Jwt/jwtAuthGuard';
-import { Rol } from 'src/auth/roles/roles.enum';
-import { Roles } from 'src/auth/roles/roles.decorator';
+import { JwtAuthGuard } from 'src/components/Jwt/jwtAuthGuard';
+import { Rol } from 'src/components/roles/roles.enum';
+import { Roles } from 'src/components/roles/roles.decorator';
 import { TiendaService } from './tienda.service';
 import { AuthService } from 'src/auth/auth.service';
 import { UsuarioActual } from 'src/components/decoradores/usuario.actual';
 import { DtoEditarTienda } from './dtos/dto.editartienda';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoEliminarTienda } from './dtos/dto.eliminartienda';
+import { RolesGuard } from 'src/components/roles/roles.guard';
 
 @Controller('Tienda')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard)
+@Roles(Rol.ADMIN_TIENDA)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TiendaController {
   constructor(
     private readonly tiendaService: TiendaService,
@@ -30,7 +32,6 @@ export class TiendaController {
       @Body() dtoCrearTienda: DtoCrearTienda,
       @UsuarioActual() usuario,
     ) {
-      console.log('Usuario recibido en endpoint:', usuario); 
       try {
         //Crear la tienda
         const tiendaCreada = await this.tiendaService.registrarTienda(dtoCrearTienda);
