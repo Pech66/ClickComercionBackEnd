@@ -5,10 +5,11 @@ import { CloudinaryService } from 'src/service/cloudinary/cloudinary.service';
 import { ProductosController } from './productos.controller';
 import { ProductosService } from './productos.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AuthModule } from 'src/auth/auth.module';
+import { PerfilModule } from '../perfil/perfil.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-    imports: [ValidacionModule, AuthModule],
+    imports: [ValidacionModule, PerfilModule, AuthModule],
     controllers: [ProductosController],
     providers: [CloudinaryService, ValidacionService, ProductosService, PrismaService],
     

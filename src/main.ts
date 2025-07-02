@@ -13,6 +13,8 @@ async function bootstrap() {
     .setTitle('ClickComerce API')
     .setDescription('API for ClickComerce')
     .setVersion('1.0')
+    .addTag('auth')
+
     .addBearerAuth({type: 'http', scheme: 'bearer', bearerFormat: 'jwt' },
       'access-token' // <-- Nombre del esquema de autenticación
     ) 

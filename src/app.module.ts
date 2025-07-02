@@ -8,7 +8,7 @@ import { HistorialService } from './modules/ventas/historial/historial.service';
 import { HistorialController } from './modules/ventas/historial/historial.controller';
 import { HistorialModule } from './modules/ventas/historial/historial.module';
 import { VentasModule } from './modules/ventas/ventas/ventas.module';
-import { AuthModule } from './auth/auth.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { TiendaController } from './modules/tienda/tienda.controller';
 import { TiendaModule } from './modules/tienda/tienda.module';
@@ -21,6 +21,12 @@ import { ProductosService } from './modules/productos/productos.service';
 import { ProductosModule } from './modules/productos/productos.module';
 import { CloudinaryModule } from './service/cloudinary/cloudinary.module';
 import { ValidacionModule } from './components/validaciondatos/validacion.module';
+import { ComprasController } from './modules/compras/compras.controller';
+import { ComprasModule } from './modules/compras/compras.module';
+import { StockController } from './modules/inventario/stock/stock.controller';
+import { StockService } from './modules/inventario/stock/stock.service';
+import { StockModule } from './modules/inventario/stock/stock.module';
+import { PerfilModule } from './modules/perfil/perfil.module';
 
 
 @Module({
@@ -40,8 +46,11 @@ import { ValidacionModule } from './components/validaciondatos/validacion.module
     ValidacionModule,
     DetallesVentasModule,
     HistorialModule,
+    ComprasModule,
+    StockModule,
+    PerfilModule,
   ],
-  controllers: [AppController, ProductosController, HistorialController, TiendaController, AlmacenController,],
-  providers: [AppService, ProductosService, HistorialService, HistorialService, TiendaService, AlmacenService],
+  controllers: [AppController,TiendaController, AlmacenController,ProductosController,ComprasController, HistorialController, StockController,],
+  providers: [AppService, ProductosService, HistorialService, HistorialService, TiendaService, AlmacenService, StockService],
 })
 export class AppModule {}

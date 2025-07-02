@@ -11,7 +11,7 @@ model almacen {
   Id        String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
   nombre    String?    @db.VarChar(100)
   Id_tienda String?    @db.Char(36)
-  tienda    tienda?    @relation(fields: [Id_tienda], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "almacen_ibfk_1")
+  tienda    tienda?    @relation(fields: [Id_tienda], references: [Id], onDelete: Cascade, map: "almacen_ibfk_1")
   producto  producto[]
 
   @@index([Id_tienda], map: "Id_tienda")
@@ -22,7 +22,7 @@ model categoria {
   nombre      String?    @db.VarChar(100)
   descripcion String?    @db.VarChar(255)
   Id_tienda   String?    @db.Char(36)
-  tienda      tienda?    @relation(fields: [Id_tienda], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "fk_categoria_tienda")
+  tienda      tienda?    @relation(fields: [Id_tienda], references: [Id], onDelete: Cascade, map: "fk_categoria_tienda")
   producto    producto[]
 
   @@index([Id_tienda], map: "fk_categoria_tienda")
@@ -34,7 +34,7 @@ model compra {
   total          Decimal?         @db.Decimal(10, 2)
   sku            String?          @db.VarChar(255)
   Id_proveedor   String?          @db.Char(36)
-  proveedor      proveedor?       @relation(fields: [Id_proveedor], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "compra_ibfk_1")
+  proveedor      proveedor?       @relation(fields: [Id_proveedor], references: [Id], onDelete: Cascade, map: "compra_ibfk_1")
   productocompra productocompra[]
 
   @@index([Id_proveedor], map: "Id_proveedor")
@@ -46,8 +46,8 @@ model detallesventa {
   devuelto          Decimal?  @db.Decimal(10, 2)
   Id_venta          String?   @db.Char(36)
   Id_producto       String?   @db.Char(36)
-  venta             venta?    @relation(fields: [Id_venta], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "detallesventa_ibfk_1")
-  producto          producto? @relation(fields: [Id_producto], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "detallesventa_ibfk_2")
+  venta             venta?    @relation(fields: [Id_venta], references: [Id], onDelete: Cascade, map: "detallesventa_ibfk_1")
+  producto          producto? @relation(fields: [Id_producto], references: [Id], onDelete: Cascade, map: "detallesventa_ibfk_2")
 
   @@index([Id_producto], map: "Id_producto")
   @@index([Id_venta], map: "Id_venta")
@@ -67,8 +67,8 @@ model producto {
   Id_almacen        String?          @db.Char(36)
   Id_categoria      String?          @db.Char(36)
   detallesventa     detallesventa[]
-  categoria         categoria?       @relation(fields: [Id_categoria], references: [Id], map: "producto_categoria_fk")
-  almacen           almacen?         @relation(fields: [Id_almacen], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "producto_ibfk_1")
+  categoria         categoria?       @relation(fields: [Id_categoria], references: [Id], onDelete: Cascade, map: "producto_categoria_fk")
+  almacen           almacen?         @relation(fields: [Id_almacen], references: [Id], onDelete: Cascade, map: "producto_ibfk_1")
   productocompra    productocompra[]
 
   @@index([Id_almacen], map: "Id_almacen")
@@ -80,8 +80,8 @@ model productocompra {
   cantidad    Int?
   Id_producto String?   @db.Char(36)
   Id_compra   String?   @db.Char(36)
-  producto    producto? @relation(fields: [Id_producto], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "productocompra_ibfk_1")
-  compra      compra?   @relation(fields: [Id_compra], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "productocompra_ibfk_2")
+  producto    producto? @relation(fields: [Id_producto], references: [Id], onDelete: Cascade, map: "productocompra_ibfk_1")
+  compra      compra?   @relation(fields: [Id_compra], references: [Id], onDelete: Cascade, map: "productocompra_ibfk_2")
 
   @@index([Id_compra], map: "Id_compra")
   @@index([Id_producto], map: "Id_producto")
@@ -94,7 +94,7 @@ model proveedor {
   empresa   String?  @db.VarChar(100)
   Id_tienda String?  @db.Char(36)
   compra    compra[]
-  tienda    tienda?  @relation(fields: [Id_tienda], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "fk_proveedor_tienda")
+  tienda    tienda?  @relation(fields: [Id_tienda], references: [Id], onDelete: Cascade, map: "fk_proveedor_tienda")
 
   @@index([Id_tienda], map: "fk_proveedor_tienda")
 }
@@ -122,7 +122,7 @@ model usuarios {
   verificado            Boolean?     @default(false)
   rol                   usuarios_rol
   Id_tienda             String?      @db.Char(36)
-  tienda                tienda?      @relation(fields: [Id_tienda], references: [Id], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_ibfk_1")
+  tienda                tienda?      @relation(fields: [Id_tienda], references: [Id], map: "usuarios_ibfk_1")
 
   @@index([Id_tienda], map: "Id_tienda")
 }

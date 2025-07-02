@@ -1,12 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCrearAlmacen } from './dtos/dtos.crearalmacen';
+import { ValidacionService } from 'src/components/validaciondatos/validacionService';
 
 @Injectable()
 export class AlmacenService {
     constructor(
         private prisma: PrismaService,
-    ){}
+        private validacionService: ValidacionService, 
+      ){}
+
    
     
     async crearAlmacen(nombre: string, idTienda: string) {
@@ -14,7 +17,13 @@ export class AlmacenService {
     const tienda = await this.prisma.tienda.findUnique({
       where: { Id: idTienda },
     });
-  
+    
+    //Validar nombre
+    const validarNombre = this.validacionService.validateNombre(nombre);
+    if (!validarNombre) {
+      throw new BadRequestException('El nombre del almacén no es válido');
+    }
+
     if (!tienda) {
       throw new BadRequestException('La tienda asociada no existe');
     }

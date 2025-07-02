@@ -3,14 +3,12 @@ import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/components/Jwt/jwtAuthGuard';
 import { DtoCrearAlmacen } from './dtos/dtos.crearalmacen';
 import { AlmacenService } from './almacen.service';
-
 import { UsuarioActual } from 'src/components/decoradores/usuario.actual';
-
-import { AuthService } from 'src/auth/auth.service';
 import { DtoEditarAlmacen } from './dtos/dto.editaralmacen';
 import { RolesGuard } from 'src/components/roles/roles.guard';
 import { Roles } from 'src/components/roles/roles.decorator';
 import { Rol } from 'src/components/roles/roles.enum';
+import { PerfilService } from '../perfil/perfil.service';
 
 @Controller('almacen')
 @ApiBearerAuth('access-token')
@@ -19,7 +17,7 @@ import { Rol } from 'src/components/roles/roles.enum';
 export class AlmacenController {
     constructor(
         private readonly almacenService: AlmacenService,
-        private authService: AuthService
+        private perfilService: PerfilService
       ){}
 
 
@@ -30,7 +28,7 @@ export class AlmacenController {
       @UsuarioActual() usuario,
     ) {
       // Busca el usuario en la BD
-      const user = await this.authService.obtenerUsuarioPorId(usuario.id); 
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id); 
     
       if (!user?.Id_tienda) {
         throw new BadRequestException('Debe crear una tienda primero');
@@ -46,7 +44,7 @@ export class AlmacenController {
       @UsuarioActual() usuario,
     ) {
       // Busca el usuario en la BD
-      const user = await this.authService.obtenerUsuarioPorId(usuario.id);
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
 
       if (!user?.Id_tienda) {
         throw new BadRequestException('Debes crear una tienda primero');
@@ -63,7 +61,7 @@ export class AlmacenController {
       @Body() dtoEditarAlmcen: DtoEditarAlmacen,
       @Param('id') idAlmacen: string,
     ) {
-      const user = await this.authService.obtenerUsuarioPorId(usuario.id);
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
     
       if (!user?.Id_tienda) {
         throw new BadRequestException('Debes crear una tienda primero');

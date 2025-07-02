@@ -3,7 +3,8 @@ import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class ValidacionService 
-{
+{   
+    
     //Metodo para valida la contraseña
     validatePassword(contrasena: string): boolean {
         const minLength = 12;
@@ -48,14 +49,30 @@ export class ValidacionService
         return true;
     }
 
+    //Metodo para validar el nombre de usuario
+    validateNombreUsuario(nombre: string){
+        const nombreLimpio = nombre.trim();
+        const nombreContexto = /^[a-zA-Z-ZáéíóúÁÉÍÓÚñÑ ]+$/;
 
+        if (typeof nombreLimpio !== 'string' ||  nombreLimpio === '') {
+            throw new Error('El nombre de usuario no es válido.');
+        }
+        if (nombre.length < 3 || nombre.length > 25) {
+            throw new Error('El nombre de usuario debe tener entre 3 y 25 caracteres.');
+        }
+        if (!nombreContexto.test(nombre)) {
+            throw new Error('El nombre de usuario solo puede contener letras.');
+        }
+        return true;
+    }
+    
     //Metodo para validar el formato del imagen y tamaño
     validateImageFormatoTamaño(imagen: Express.Multer.File): boolean {
-        const allowedFormats = ['image/jpeg', 'image/png'];
+        const allowedFormats = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
         const maxSize = 5 * 1024 * 1024; // 5 MB
 
         if (!allowedFormats.includes(imagen.mimetype)) {
-            throw new Error("El formato de la imagen no es válido. Debe ser JPEG o PNG.");
+            throw new Error("El formato de la imagen no es válido. Debe ser JPEG,PNG,JPG O WEBP.");
         }
 
         if (imagen.size > maxSize) {
@@ -76,7 +93,7 @@ export class ValidacionService
             throw new Error('El precio es demasiado alto.');
         }
         // Validar que tenga máximo dos decimales
-        if (!/^\d+(\.\d{1,2})?$/.test(precio.toString())) {
+        if (!/^\d+(\.\d{1})?$/.test(precio.toString())) {
             throw new Error('El precio debe tener máximo dos decimales.');
         }
         return true;
@@ -94,9 +111,7 @@ export class ValidacionService
     }
 
     validateDescripcion(descripcion: string): boolean {
-        if (typeof descripcion !== 'string' || descripcion.trim() === '') {
-            throw new Error('La descripción no es válida.');
-        }
+
         if (descripcion.length < 10 || descripcion.length > 200) {
             throw new Error('La descripción debe tener entre 10 y 200 caracteres.');
         }
@@ -111,6 +126,15 @@ export class ValidacionService
         if (!telefonoContexto.test(telefono)) {
             throw new Error('El número de teléfono debe tener exactamente 10 dígitos.');
         }
+        return true;
+    }
+
+    validateCodigoBarra(codigoBarra: string): boolean {
+        const codigoBarraContexto = /^[0-9A-Za-z]$/; // 12 o 13 dígitos
+        if (typeof codigoBarra !== 'string' || codigoBarra.trim() === '') {
+            throw new Error('El código de barras no es válido.');
+        }
+        
         return true;
     }
     

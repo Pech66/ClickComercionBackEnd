@@ -13,15 +13,15 @@ export class DtoCrearProveedor{
     nombre: string 
 
     @ApiProperty({ 
-        description: 'Nombre del proveedor',
+        description: 'Numero de proveedor',
         example: 'Proveedor S.A.',
         required: true
     })
     @IsString()
-    telefon : string
+    telefono : string
     
     @ApiProperty({
-        description: 'Nombre de la empresa del proveedor',
+        description: 'Empresa del proveedor',
         example: 'Empresa S.A.',
         required: true
     })

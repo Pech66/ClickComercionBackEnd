@@ -16,15 +16,9 @@ export class TiendaService {
     async registrarTienda(dtoCrearTienda: DtoCrearTienda) {
         try {
           // Validar los datos de la tienda
-          const numero = this.validacionService.validateNumeroTelefono(dtoCrearTienda.telefono);
-          if(!numero){
-            throw new Error('El número de teléfono no es válido');
-          } 
-          const nombre = this.validacionService.validateNombre(dtoCrearTienda.nombre);
-          if(!nombre){
-            throw new Error('El nombre de la tienda debe ser válido');
-          }
-
+          this.validacionService.validateNumeroTelefono(dtoCrearTienda.telefono);
+          this.validacionService.validateNombre(dtoCrearTienda.nombre);
+          
           
           const tienda = await this.prisma.tienda.create({
             data: {

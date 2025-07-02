@@ -1,10 +1,11 @@
 import {  BadRequestException, Injectable } from '@nestjs/common';
 import { CloudinaryService } from 'src/service/cloudinary/cloudinary.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AuthService } from 'src/auth/auth.service';
+import { AuthService } from 'src/modules/auth/auth.service';
 import { DtoProductoGranel } from './dtos/dto.productoganel';
 import { DtoProductoNormal } from './dtos/dto.producto';
 import { DtoEditarProducto } from './dtos/dto.editarproductoNormal';
+import { ValidacionService } from 'src/components/validaciondatos/validacionService';
 
 
 
@@ -14,15 +15,17 @@ export class ProductosService {
         private cloudinaryService: CloudinaryService,
         private prisma: PrismaService,
         private authService: AuthService,
+        private validacionService: ValidacionService
     ){}
 
 
     async normal(dto: DtoProductoNormal, file?: Express.Multer.File) {
     try {
-        
 
             let fotoUrl: string | undefined;
+
             if (file) {
+                this.validacionService.validateImageFormatoTamaño(file);
                 const resultado = await this.cloudinaryService.uploadFile(file);
                 fotoUrl = resultado.secure_url;
             }
@@ -37,11 +40,21 @@ export class ProductosService {
                     throw new BadRequestException('La categoría seleccionada no existe.');
                 }
             } 
-                 
+              
             // Valida campos aquí si quieres, pero el Id_almacen YA viene del controller
             if (!dto.codigobarra) {
                 throw new Error('El producto ya está registrado');
             }
+
+            //validar campos 
+            this.validacionService.validateNombre(dto.nombre);
+            this.validacionService.validateDescripcion(dto.descripcion);
+            this.validacionService.validateCodigoBarra(dto.codigobarra);
+            this.validacionService.validatePrecio(dto.precioventa);
+            if (dto.precioporveedor !== undefined && dto.precioporveedor !== null) {
+                this.validacionService.validatePrecio(dto.precioporveedor);
+            }
+            
 
             const productoCreado = await this.prisma.producto.create({
                 data: {
@@ -68,6 +81,7 @@ export class ProductosService {
 
             let fotoUrl: string | undefined;
             if (file) {
+                this.validacionService.validateImageFormatoTamaño(file);
                 const resultado = await this.cloudinaryService.uploadFile(file);
                 fotoUrl = resultado.secure_url;
             }
@@ -85,6 +99,15 @@ export class ProductosService {
             // Valida campos aquí si quieres, pero el Id_almacen YA viene del controller
             if (!dtoproductogranel.codigobarra) {
                 throw new Error('El producto ya está registrado');
+            }
+
+            //validacion
+            this.validacionService.validateNombre(dtoproductogranel.nombre);
+            this.validacionService.validateDescripcion(dtoproductogranel.descripcion);
+            this.validacionService.validateCodigoBarra(dtoproductogranel.codigobarra);
+            this.validacionService.validatePrecio(dtoproductogranel.preciokilo);
+            if (dtoproductogranel.preciodeproveedor !== undefined && dtoproductogranel.preciodeproveedor !== null) {
+                this.validacionService.validatePrecio(dtoproductogranel.preciodeproveedor);
             }
 
             const productoCreado = await this.prisma.producto.create({

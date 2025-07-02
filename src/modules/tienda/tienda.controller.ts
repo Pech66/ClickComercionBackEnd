@@ -5,7 +5,7 @@ import { JwtAuthGuard } from 'src/components/Jwt/jwtAuthGuard';
 import { Rol } from 'src/components/roles/roles.enum';
 import { Roles } from 'src/components/roles/roles.decorator';
 import { TiendaService } from './tienda.service';
-import { AuthService } from 'src/auth/auth.service';
+import { AuthService } from 'src/modules/auth/auth.service';
 import { UsuarioActual } from 'src/components/decoradores/usuario.actual';
 import { DtoEditarTienda } from './dtos/dto.editartienda';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -33,6 +33,14 @@ export class TiendaController {
       @UsuarioActual() usuario,
     ) {
       try {
+        // Verificar si el usuario ya tiene una tienda asignada
+        const usuarioExistente = await this.prisma.usuarios.findUnique({
+          where: { Id: usuario.id },
+          select: { Id_tienda: true }
+        });
+
+      
+        
         //Crear la tienda
         const tiendaCreada = await this.tiendaService.registrarTienda(dtoCrearTienda);
 

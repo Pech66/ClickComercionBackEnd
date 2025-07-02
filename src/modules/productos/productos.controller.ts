@@ -6,15 +6,14 @@ import { CloudinaryService } from 'src/service/cloudinary/cloudinary.service';
 import { ValidacionService } from 'src/components/validaciondatos/validacionService';
 import { ProductosService } from './productos.service';
 import { UsuarioActual } from 'src/components/decoradores/usuario.actual';
-import { AuthService } from 'src/auth/auth.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Roles } from 'src/components/roles/roles.decorator';
 import { RolesGuard } from 'src/components/roles/roles.guard';
 import { Rol } from 'src/components/roles/roles.enum';
 import { DtoProductoGranel } from './dtos/dto.productoganel';
 import { DtoEditarProducto } from './dtos/dto.editarproductoNormal';
-
 import { DtoProductoNormal } from './dtos/dto.producto';
+import { PerfilService } from '../perfil/perfil.service';
 
 @Controller('Productos')
 @ApiBearerAuth('access-token')
@@ -25,7 +24,7 @@ export class ProductosController {
         private cloudinaryService: CloudinaryService,
         private validacionService : ValidacionService,
         private productoService: ProductosService,
-        private authService: AuthService,
+        private perfilService: PerfilService,
         private prisma: PrismaService,
     ){}
     
@@ -60,7 +59,7 @@ export class ProductosController {
         this.validacionService.validateDescripcion(dtoproductonormal.descripcion);
         this.validacionService.validateNombre(dtoproductonormal.nombre);
       
-        const user = await this.authService.obtenerUsuarioPorId(usuario.id);
+        const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
 
         if(file){
           this.validacionService.validateImageFormatoTamaño(file);
@@ -120,7 +119,7 @@ export class ProductosController {
           this.validacionService.validateImageFormatoTamaño(file);
         }
         
-        const user = await this.authService.obtenerUsuarioPorId(usuario.id);
+        const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
         if (!user?.Id_tienda) {
           throw new BadRequestException('Debes crear una tienda primero.');
         }
@@ -144,7 +143,7 @@ export class ProductosController {
       @UsuarioActual() usuario,
     ) {
       // Busca el usuario en la BD con su id
-      const user = await this.authService.obtenerUsuarioPorId(usuario.id);
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
       if (!user?.Id_tienda) {
         throw new BadRequestException('Debes crear una tienda primero.');
       }
@@ -205,7 +204,7 @@ export class ProductosController {
       @UsuarioActual() usuario,
     ) {
       // Validaciones de seguridad (igual a tu código)
-      const user = await this.authService.obtenerUsuarioPorId(usuario.id);
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
       if (!user?.Id_tienda) throw new BadRequestException('Debes crear una tienda primero.');
     
       const producto = await this.prisma.producto.findUnique({ where: { Id: idProducto } });
@@ -246,7 +245,7 @@ export class ProductosController {
       @Param('idProducto') idProducto: string,
       @UsuarioActual() usuario,
     ) {
-      const user = await this.authService.obtenerUsuarioPorId(usuario.id);
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
       if (!user?.Id_tienda) {
         throw new BadRequestException('Debes crear una tienda primero.');
       }
