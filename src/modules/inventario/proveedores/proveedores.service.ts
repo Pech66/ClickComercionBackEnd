@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCrearProveedor } from './dto/dto.crearproveedro';
 import { DtoEditaeProveedor } from './dto/dto.editarproveedor';
@@ -56,6 +56,19 @@ export class ProveedoresService {
                 empresa: dtoEditarProveedor.empresa
             }
         });
+    }
+
+    async obtenerProveedorPorId(idProveedor: string, idTienda: string) {
+      const proveedor = await this.prisma.proveedor.findFirst({
+        where: {
+          Id: idProveedor,
+          Id_tienda: idTienda
+        }
+      });
+      if (!proveedor) {
+        throw new NotFoundException('Proveedor no encontrado o no pertenece a tu tienda.');
+      }
+      return proveedor;
     }
 
     async eliminarProveedor(idProveedor: string, Id_tienda: string) {

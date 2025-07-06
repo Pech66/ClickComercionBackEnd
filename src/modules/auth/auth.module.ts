@@ -37,6 +37,6 @@ import { CloudinaryModule } from 'src/service/cloudinary/cloudinary.module';
     AuthService,
   ],
   controllers: [AuthController],
-  exports: [JwtModule, JwtStrategy, PassportModule, VerificationService,AuthService ],
+  exports: [JwtModule, JwtStrategy, PassportModule, VerificationService, AuthService],
 })
-export class AuthModule {}
+export class AuthModule { }

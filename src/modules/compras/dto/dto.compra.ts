@@ -23,8 +23,7 @@ export class DtoProductoCompra {
     @ApiProperty({description:"Id del proveedor (Opcional si no hay proveedor)"})
     @IsString()
     @IsUUID()
-    @IsOptional()
-    Id_proveedor?: string;
+    Id_proveedor: string;
 
     @ApiProperty({ description: "Productos comprados", type: [DtoCrearCompra],})
     @ValidateNested({ each: true }) //Validar cada elemento del array

@@ -5,19 +5,19 @@ import { ValidacionService } from 'src/components/validaciondatos/validacionServ
 
 @Injectable()
 export class AlmacenService {
-    constructor(
-        private prisma: PrismaService,
-        private validacionService: ValidacionService, 
-      ){}
+  constructor(
+    private prisma: PrismaService,
+    private validacionService: ValidacionService,
+  ) { }
 
-   
-    
-    async crearAlmacen(nombre: string, idTienda: string) {
+
+
+  async crearAlmacen(nombre: string, idTienda: string) {
     // Antes de crear, valida que la tienda exista
     const tienda = await this.prisma.tienda.findUnique({
       where: { Id: idTienda },
     });
-    
+
     //Validar nombre
     const validarNombre = this.validacionService.validateNombre(nombre);
     if (!validarNombre) {
@@ -27,7 +27,7 @@ export class AlmacenService {
     if (!tienda) {
       throw new BadRequestException('La tienda asociada no existe');
     }
-  
+
     // creamos el almacén
     return this.prisma.almacen.create({
       data: {
@@ -65,7 +65,7 @@ export class AlmacenService {
   async editarMiAlmacen(nombre: string, idAlmacen: string, idTienda: string) {
     // Buscamos que el almacén pertenezca a la tienda del usuario
     const almacen = await this.prisma.almacen.findFirst({
-      where: { 
+      where: {
         Id: idAlmacen,
         Id_tienda: idTienda,
       }
@@ -82,7 +82,7 @@ export class AlmacenService {
     });
   }
 
-  
-      
-} 
+
+
+}
 

@@ -66,6 +66,7 @@ model producto {
   esgranel          Boolean?
   Id_almacen        String?          @db.Char(36)
   Id_categoria      String?          @db.Char(36)
+  stock             Int?             @default(0)
   detallesventa     detallesventa[]
   categoria         categoria?       @relation(fields: [Id_categoria], references: [Id], onDelete: Cascade, map: "producto_categoria_fk")
   almacen           almacen?         @relation(fields: [Id_almacen], references: [Id], onDelete: Cascade, map: "producto_ibfk_1")

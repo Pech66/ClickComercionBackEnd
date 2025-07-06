@@ -1,23 +1,22 @@
-import { BadRequestException, Body, ConflictException, Controller,  Delete,  Get, HttpCode, Param, Post, Put, Req, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, Post, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { DtoRegistraUsuario } from "./dtos/dto.registra.usuario";
 import { DtoVerificacion } from "./dtos/dto.verificacion";
 import { DtoLoginUsuario } from "./dtos/dto.login.usuario";
 import { DtoReenvio } from "./dtos/dto.reenvio";
-import { ApiBearerAuth, ApiBody, ApiOperation } from "@nestjs/swagger";
-import { ValidacionService } from "src/components/validaciondatos/validacionService";
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "src/components/Jwt/jwtAuthGuard";
 import { UsuarioActual } from "src/components/decoradores/usuario.actual";
 
 
-
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-  ) {}
+  ) { }
 
-  
+
   @Post('registro')
   @ApiOperation({ summary: 'Registrar un administrador de tienda' })
   async registrarAdminTienda(@Body() registrarUsuarioDto: DtoRegistraUsuario) {
@@ -41,13 +40,14 @@ export class AuthController {
     }
   }
 
-  @Post('verificar-cuenta')  
+  @Post('verificar-cuenta')
   @ApiOperation({ summary: 'Verificar cuenta de usuario' })
   async verificarCuenta(@Body() dtoVerificacion: DtoVerificacion) {
     try {
       return await this.authService.verificarCuenta(dtoVerificacion);
     } catch (error) {
       if (error) {
+
         throw error;
       }
       throw new ConflictException('Error al verificar la cuenta');
@@ -79,46 +79,71 @@ export class AuthController {
     }
   }
 
-  
+
   @Post('forgot-password')
-  @ApiOperation({ summary: 'Solicitar recuperación de contraseña' })
   @ApiBody({
+    description: 'Email del usuario para recuperar contraseña',
     schema: {
       type: 'object',
       properties: {
-        email: { type: 'string', example: 'usuario@email.com' }
-      }
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'usuario@ejemplo.com',
+          description: 'Email registrado del usuario'
+        }
+      },
+      required: ['email']
     }
   })
+  @ApiOperation({ summary: 'Solicitar código de recuperación de contraseña' })
   async forgotPassword(@Body() body: { email: string }) {
     try {
       return await this.authService.forgotPassword(body.email);
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al procesar solicitud');
+      throw new BadRequestException(error.message);
     }
   }
 
- 
+  // 3. POST /auth/reset-password
   @Post('reset-password')
-  @ApiOperation({ summary: 'Restablecer contraseña con token' })
+  @ApiOperation({ summary: 'Restablecer contraseña con código' })
   @ApiBody({
+    description: 'Datos para restablecer contraseña',
     schema: {
       type: 'object',
       properties: {
-        token: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-        password: { type: 'string', example: 'NuevaContrasena123@' }
-      }
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'usuario@ejemplo.com',
+          description: 'Email del usuario'
+        },
+        codigo: {
+          type: 'string',
+          example: '123456',
+          description: 'Código de 6 dígitos recibido por email',
+          minLength: 6,
+          maxLength: 6
+        },
+        password: {
+          type: 'string',
+          example: 'NuevaContrasena123@',
+          description: 'Nueva contraseña (mínimo 8 caracteres)',
+          minLength: 8
+        }
+      },
+      required: ['email', 'codigo', 'password']
     }
   })
-  async resetPassword(@Body() body: { token: string; password: string }) {
+  async resetPassword(@Body() body: { email: string; codigo: string; password: string }) {
     try {
-      return await this.authService.resetPassword(body.token, body.password);
+      return await this.authService.resetPassword(body.email, body.codigo, body.password);
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al restablecer contraseña');
+      throw new BadRequestException(error.message);
     }
   }
-  
 
- 
+
 
 }

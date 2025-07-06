@@ -2,9 +2,8 @@ import { Injectable } from "@nestjs/common";
 
 
 @Injectable()
-export class ValidacionService 
-{   
-    
+export class ValidacionService {
+
     //Metodo para valida la contraseña
     validatePassword(contrasena: string): boolean {
         const minLength = 12;
@@ -21,7 +20,7 @@ export class ValidacionService
         }
         if (!hasUpperCase) {
             throw new Error("La contraseña debe contener al menos una letra mayúscula.");
-        }  
+        }
         if (!hasLowerCase) {
             throw new Error("La contraseña debe contener al menos una letra minúscula.");
         }
@@ -39,22 +38,22 @@ export class ValidacionService
     validateEmailFormat(email: string): boolean {
         const emailContext = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if(email.trim() == ''){
+        if (email.trim() == '') {
             throw new Error("El email no puede estar vacío.");
         }
 
-        if (!emailContext.test(email) ){
+        if (!emailContext.test(email)) {
             throw new Error("El formato del email es incorrecto.");
         }
         return true;
     }
 
     //Metodo para validar el nombre de usuario
-    validateNombreUsuario(nombre: string){
+    validateNombreUsuario(nombre: string) {
         const nombreLimpio = nombre.trim();
         const nombreContexto = /^[a-zA-Z-ZáéíóúÁÉÍÓÚñÑ ]+$/;
 
-        if (typeof nombreLimpio !== 'string' ||  nombreLimpio === '') {
+        if (typeof nombreLimpio !== 'string' || nombreLimpio === '') {
             throw new Error('El nombre de usuario no es válido.');
         }
         if (nombre.length < 3 || nombre.length > 25) {
@@ -65,7 +64,7 @@ export class ValidacionService
         }
         return true;
     }
-    
+
     //Metodo para validar el formato del imagen y tamaño
     validateImageFormatoTamaño(imagen: Express.Multer.File): boolean {
         const allowedFormats = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
@@ -134,8 +133,8 @@ export class ValidacionService
         if (typeof codigoBarra !== 'string' || codigoBarra.trim() === '') {
             throw new Error('El código de barras no es válido.');
         }
-        
+
         return true;
     }
-    
+
 }

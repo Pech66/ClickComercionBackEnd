@@ -1,5 +1,5 @@
-import { BadRequestException, Body, Controller, Post,Get,Put, UploadedFile, UseGuards, UseInterceptors, Param, Delete } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import { BadRequestException, Body, Controller, Post,Get,Put, UploadedFile, UseGuards, UseInterceptors, Param, Delete, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/components/Jwt/jwtAuthGuard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/service/cloudinary/cloudinary.service';
@@ -14,11 +14,14 @@ import { DtoProductoGranel } from './dtos/dto.productoganel';
 import { DtoEditarProducto } from './dtos/dto.editarproductoNormal';
 import { DtoProductoNormal } from './dtos/dto.producto';
 import { PerfilService } from '../perfil/perfil.service';
+import { buffer } from 'stream/consumers';
+import { AuthGuard } from '@nestjs/passport';
 
+@ApiTags('Productos')
 @Controller('Productos')
 @ApiBearerAuth('access-token')
 @Roles(Rol.ADMIN_TIENDA)
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ProductosController {
     constructor(
         private cloudinaryService: CloudinaryService,
@@ -27,6 +30,20 @@ export class ProductosController {
         private perfilService: PerfilService,
         private prisma: PrismaService,
     ){}
+    
+    private async obtenerIdTienda(usuarioId: string): Promise<string> {
+        const user = await this.prisma.usuarios.findUnique({
+            where: { Id: usuarioId },
+            select: { Id_tienda: true }
+        });
+
+        if (!user?.Id_tienda) {
+            throw new BadRequestException('Debes crear tu tienda primero.');
+        }
+
+        return user.Id_tienda;
+    }
+
     
     @Post('normal')
     @ApiOperation({ summary: 'Crear un producto normal' })
@@ -59,17 +76,14 @@ export class ProductosController {
         this.validacionService.validateDescripcion(dtoproductonormal.descripcion);
         this.validacionService.validateNombre(dtoproductonormal.nombre);
       
-        const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
+        const Id_tienda = await this.obtenerIdTienda(usuario.id);
 
         if(file){
           this.validacionService.validateImageFormatoTamaño(file);
         }
 
-        if (!user?.Id_tienda) {
-          throw new BadRequestException('Debes crear una tienda primero.');
-        }
         const almacen = await this.prisma.almacen.findFirst({
-          where: { Id_tienda: user.Id_tienda },
+          where: { Id_tienda: Id_tienda },
         });
         if (!almacen) {
           throw new BadRequestException('No hay almacén registrado para tu tienda.');
@@ -137,108 +151,284 @@ export class ProductosController {
       }
     }
 
-    @Get('ObtenerTodos')
-    @ApiOperation({ summary: 'Obtener todos los productos de la tienda del usuario actual' })
-    async obtenerTodosProductos(
-      @UsuarioActual() usuario,
-    ) {
-      // Busca el usuario en la BD con su id
-      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
-      if (!user?.Id_tienda) {
-        throw new BadRequestException('Debes crear una tienda primero.');
-      }
-      // Busca los almacenes de esa tienda (por si tienes más de uno)
-      const almacenes = await this.prisma.almacen.findMany({
-        where: { Id_tienda: user.Id_tienda },
-        select: { Id: true }
-      });
     
-      if (!almacenes.length) {
-        throw new BadRequestException('No hay almacenes registrados para tu tienda.');
-      }
-      // Obtén los Id de los almacenes
-      const almacenIds = almacenes.map(a => a.Id);
     
-      // Busca todos los productos que pertenezcan a esos almacenes
-      const productos = await this.prisma.producto.findMany({
-        where: { Id_almacen: { in: almacenIds } }
-      });
     
-      return productos;
-    }
-
-    @Put('EditarProducto')
-    @ApiOperation({ summary: 'Modificar un producto normal' })
+    @Put('editar/:idProducto')
+    @ApiOperation({ summary: 'Editar un producto' })
     @ApiConsumes('multipart/form-data')
-    @ApiBody({
-      schema: {
-        type: 'object',
-        properties: {
-          //Lo de un producto normal
-          nombre: { type: 'string', example: 'Laptop Dell XPS 13', nullable: true },
-          descripcion: { type: 'string', example: 'Laptop Dell XPS 13 con Intel i7...', nullable: true },
-          codigobarra: { type: 'string', example: 'D4GH5J6K7L8M9N0', nullable: true },
-          precioventa: { type: 'number', example: 1200.50, nullable: true, },
-          preciodeproveedor: { type: 'number', example: 1000.00, nullable: true },
-          Id_categoria: { type: 'string', example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd', nullable: true, description: 'ID de la categoría (opcional)' },
-          
-          //Lo de un producto granel
-          preciokilo: { type: 'number', example: 35.00, nullable: true },
-          unidaddemedida: { type: 'string', example: 'kg', nullable: true },
-          esgranel: { type: 'boolean', example: true, default: true},
-
-          foto: {
-            type: 'string',
-            format: 'binary',
-            description: 'Archivo de imagen del producto',
-            nullable: true,
-          }
-        }
-      }
+    @ApiParam({
+      name: 'idProducto',
+      description: 'ID del producto a editar',
+      example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd'
     })
+    @ApiBody({ schema: {
+          type: 'object',
+          properties: {
+            // Campos básicos del producto
+            nombre: { 
+              type: 'string', 
+              example: 'Laptop Dell XPS 13', 
+              nullable: true,
+              description: 'Nombre del producto'
+            },
+            descripcion: { 
+              type: 'string', 
+              example: 'Laptop Dell XPS 13 con Intel i7...', 
+              nullable: true,
+              description: 'Descripción del producto'
+            },
+            codigobarra: { 
+              type: 'string', 
+              example: 'D4GH5J6K7L8M9N0', 
+              nullable: true,
+              description: 'Código de barras del producto'
+            },
+            precioventa: { 
+              type: 'number', 
+              example: 1200.50, 
+              nullable: true,
+              description: 'Precio de venta'
+            },
+            preciodeproveedor: { 
+              type: 'number', 
+              example: 1000.00, 
+              nullable: true,
+              description: 'Precio del proveedor'
+            },
+            Id_categoria: { 
+              type: 'string', 
+              example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd', 
+              nullable: true, 
+              description: 'ID de la categoría (opcional)'
+            },
+
+            // Campos para productos a granel
+            preciokilo: { 
+              type: 'number', 
+              example: 35.00, 
+              nullable: true,
+              description: 'Precio por kilo (solo para productos a granel)'
+            },
+            unidaddemedida: { 
+              type: 'string', 
+              example: 'kg', 
+              nullable: true,
+              description: 'Unidad de medida (kg, gramos, litros, etc.)'
+            },
+            esgranel: { 
+              type: 'boolean', 
+              example: false, 
+              default: false,
+              description: 'Indica si el producto se vende a granel'
+            },
+          
+            // Imagen del producto
+            foto: {
+              type: 'string',
+              format: 'binary',
+              description: 'Archivo de imagen del producto',
+              nullable: true,
+            }
+          }
+        } })
     @UseInterceptors(FileInterceptor('foto'))
-    async editarProducto(
+     async editarProducto(
       @Param('idProducto') idProducto: string,
-      @Body() dtoeditarproducto: DtoEditarProducto,
+      @Body() dtoEditarProducto: DtoEditarProducto,
       @UploadedFile() file: Express.Multer.File,
       @UsuarioActual() usuario,
     ) {
-      // Validaciones de seguridad (igual a tu código)
+      // Validación de usuario y tienda
       const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
       if (!user?.Id_tienda) throw new BadRequestException('Debes crear una tienda primero.');
-    
-      const producto = await this.prisma.producto.findUnique({ where: { Id: idProducto } });
+
+      // Validación de producto y almacén
+      const producto = await this.prisma.producto.findUnique({ 
+        where: { Id: idProducto },
+        include: { categoria: true, almacen: true }
+      });
       if (!producto) throw new BadRequestException('El producto no existe.');
       if (!producto.Id_almacen) throw new BadRequestException('El producto no tiene un almacén asignado.');
-    
+
       const almacen = await this.prisma.almacen.findUnique({ where: { Id: producto.Id_almacen } });
       if (!almacen || almacen.Id_tienda !== user.Id_tienda) {
         throw new BadRequestException('No tienes permiso para modificar este producto.');
       }
-    
+
+      // Subida de imagen
       let fotoUrl = producto.fotoUrl;
       if (file) {
-        const resultado = await this.cloudinaryService.uploadFile(file);
-        fotoUrl = resultado.secure_url;
-      }
-    
-      // Solo actualiza campos de producto normal
-      const productoActualizado = await this.prisma.producto.update({
-        where: { Id: idProducto },
-        data: {
-          nombre: dtoeditarproducto.nombre,
-          descripcion: dtoeditarproducto.descripcion,
-          codigobarra: dtoeditarproducto.codigobarra,
-          precioventa: dtoeditarproducto.precioventa,
-          preciodeproveedor: dtoeditarproducto.preciodeproveedor,
-          esgranel: false,
-          fotoUrl: fotoUrl
+        try {
+          const resultado = await this.cloudinaryService.uploadFile(file);
+          fotoUrl = resultado.secure_url;
+        } catch (error) {
+          throw new BadRequestException('Error al subir la imagen');
         }
-      });
-      return productoActualizado;
+      }
+
+      // Llama al servicio
+      return this.productoService.editarProducto(idProducto, dtoEditarProducto, fotoUrl ?? undefined);
     }
 
+    @Get('por-categoria')
+    @ApiOperation({ summary: 'Buscar productos por id de categoria' })
+    async buscarPorCategoria(
+      @UsuarioActual() usuario,
+      @Query('categoria') categoria: string,
+    ) {
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
+      if (!user?.Id_tienda) throw new BadRequestException('Debes crear una tienda primero.');
+      const almacenes = await this.prisma.almacen.findMany({
+        where: { Id_tienda: user.Id_tienda },
+        select: { Id: true }
+      });
+      if (!almacenes.length) throw new BadRequestException('No hay almacenes registrados para tu tienda.');
+      const almacenIds = almacenes.map(a => a.Id);
+    
+      // Valida que la categoría no sea vacía
+      if (!categoria || categoria.trim() === '') {
+        throw new BadRequestException('Debes indicar una categoría para filtrar.');
+      }
+    
+      const productos = await this.prisma.producto.findMany({
+        where: {
+          Id_almacen: { in: almacenIds },
+          Id_categoria: categoria, // <-- Filtra por el ID de la categoría
+        },
+        include: {
+          categoria: { select: { Id: true, nombre: true } }
+        },
+        orderBy: { nombre: 'asc' }
+      });
+    
+      return {
+        total: productos.length,
+        productos
+      };
+    }
 
+    @Get('buscar')
+      @ApiOperation({ summary: 'Buscar productos por nombre o código de barras' })
+      async buscarProductos(
+        @UsuarioActual() usuario,
+        @Query('buscar') buscar: string,
+      ) {
+        const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
+        if (!user?.Id_tienda) throw new BadRequestException('Debes crear una tienda primero.');
+        const almacenes = await this.prisma.almacen.findMany({
+          where: { Id_tienda: user.Id_tienda },
+          select: { Id: true }
+        });
+        if (!almacenes.length) throw new BadRequestException('No hay almacenes registrados para tu tienda.');
+        const almacenIds = almacenes.map(a => a.Id);
+      
+        if (!buscar || buscar.trim() === '') {
+          throw new BadRequestException('Debes escribir un texto para buscar.');
+        }
+      
+        const productos = await this.prisma.producto.findMany({
+          where: {
+            Id_almacen: { in: almacenIds },
+            OR: [
+              { nombre: { contains: buscar } },
+              { codigobarra: { contains: buscar} }
+            ]
+          },
+          include: {
+            categoria: { select: { Id: true, nombre: true } }
+          },
+          orderBy: { nombre: 'asc' }
+        });
+      
+        return { total: productos.length, productos };
+    }
+
+    @Get('mis-productos')
+      @ApiOperation({ summary: 'Obtener todos los productos de mi tienda' })
+      async obtenerMisProductos(@UsuarioActual() usuario) {
+        // 1. Verifica que el usuario tenga tienda
+        const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
+        if (!user?.Id_tienda) {
+          throw new BadRequestException('Debes crear una tienda primero.');
+        }
+      
+        // 2. Busca los almacenes de la tienda del usuario
+        const almacenes = await this.prisma.almacen.findMany({
+          where: { Id_tienda: user.Id_tienda },
+          select: { Id: true }
+        });
+        if (!almacenes.length) {
+          throw new BadRequestException('No hay almacenes registrados para tu tienda.');
+        }
+        const almacenIds = almacenes.map(a => a.Id);
+      
+        // 3. Busca todos los productos en esos almacenes
+        const productos = await this.prisma.producto.findMany({
+          where: { Id_almacen: { in: almacenIds } },
+          include: {
+            categoria: { select: { Id: true, nombre: true } },
+            almacen: { select: { Id: true, nombre: true } }
+          },
+          orderBy: { nombre: 'asc' }
+        });
+      
+        return {
+          total: productos.length,
+          productos
+        };
+      }
+
+
+
+    @Get('obtener/:id')
+    @ApiOperation({ summary: 'Obtener producto por ID' })
+    @ApiParam({
+      name: 'id',
+      description: 'ID del producto',
+      example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd'
+    })
+    async obtenerProductoPorId(
+      @Param('id') id: string,
+      @UsuarioActual() usuario,
+    ) {
+      try {
+        // 1. Verificar que el usuario tiene tienda
+        const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
+        if (!user?.Id_tienda) {
+          throw new BadRequestException('Debes crear una tienda primero.');
+        }
+      
+        // 2. Buscar el producto con relaciones
+        const producto = await this.prisma.producto.findUnique({
+          where: { Id: id },
+          include: {
+            categoria: {
+              select: { Id: true, nombre: true }
+            },
+            almacen: {
+              select: { Id: true, nombre: true, Id_tienda: true }
+            }
+          }
+        });
+      
+        if (!producto) {
+          throw new BadRequestException('Producto no encontrado');
+        }
+      
+        // 3. Verificar que el producto pertenece a su tienda
+        if (!producto.almacen || producto.almacen.Id_tienda !== user.Id_tienda) {
+          throw new BadRequestException('No tienes permiso para ver este producto');
+        }
+      
+        return {
+          producto,
+          tienda: user.Id_tienda
+        };
+      } catch (error) {
+        throw new BadRequestException(error.message || 'Error al obtener el producto');
+      }
+    }
     @Delete('Eliminar/:idProducto')
     @ApiOperation({ summary: 'Eliminar un producto propio' })
     async eliminarProducto(
@@ -273,4 +463,4 @@ export class ProductosController {
       return { message: 'Producto eliminado correctamente' };
     }
 
-}
+  }
