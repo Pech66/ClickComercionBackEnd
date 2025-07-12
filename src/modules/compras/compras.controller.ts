@@ -38,6 +38,8 @@ export class ComprasController {
 
     @Post('registrar')
     @ApiOperation({ summary: 'Registrar una compra (puede ser sin proveedor)' })
+    @ApiResponse({ status: 201, description: 'Compra registrada exitosamente' })
+    @ApiResponse({ status: 400, description: 'Error de validación' })
     async registrarCompra(
         @Body() dto: DtoProductoCompra,
         @UsuarioActual() usuario,
@@ -126,6 +128,8 @@ export class ComprasController {
     @Get(':id')
     @ApiOperation({ summary: 'Obtener una compra por ID' })
     @ApiParam({ name: 'id', description: 'ID de la compra' })
+    @ApiResponse({ status: 200, description: 'Compra encontrada' })
+    @ApiResponse({ status: 404, description: 'Compra no encontrada' })
     async obtenerCompraPorId(
         @Param('id') id: string,
         @UsuarioActual() usuario,
@@ -190,5 +194,4 @@ export class ComprasController {
         const Id_tienda = await this.obtenerIdTienda(usuario.id);
         return this.comprasService.eliminarProductoDeCompra(id, productoCompraId, Id_tienda);
     }
-
 }

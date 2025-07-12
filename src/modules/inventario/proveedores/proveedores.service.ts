@@ -11,20 +11,29 @@ export class ProveedoresService {
         private validacionService: ValidacionService, 
     ) {}
 
-    async CrearProveedor(dtoCrearProveedro: DtoCrearProveedor, Id_tienda: string) {
-        if(!Id_tienda) throw new Error('Falta el Id de la tienda');
+    async CrearProveedor(dtoCrearProveedor: DtoCrearProveedor, Id_tienda: string) {
+        if(!Id_tienda) throw new BadRequestException('Falta el Id de la tienda');
 
-        // validaciones 
-        this.validacionService.validateNombre(dtoCrearProveedro.nombre);
-        this.validacionService.validateNumeroTelefono(dtoCrearProveedro.telefono);
-        this.validacionService.validateNombre(dtoCrearProveedro.empresa);
-        
+        this.validacionService.validateNombre(dtoCrearProveedor.nombre);
+        this.validacionService.validateNumeroTelefono(dtoCrearProveedor.telefono);
+        this.validacionService.validateNombre(dtoCrearProveedor.empresa);
+
+        // Validar que no exista un proveedor con ese nombre en la tienda
+        const proveedorExistente = await this.prisma.proveedor.findFirst({
+            where: {
+                nombre: dtoCrearProveedor.nombre,
+                Id_tienda: Id_tienda
+            }
+        });
+        if (proveedorExistente) {
+            throw new BadRequestException('Ya existe un proveedor con ese nombre en tu tienda.');
+        }
 
         return await this.prisma.proveedor.create({
             data: {
-                nombre: dtoCrearProveedro.nombre,
-                telefono: dtoCrearProveedro.telefono,
-                empresa: dtoCrearProveedro.empresa,
+                nombre: dtoCrearProveedor.nombre,
+                telefono: dtoCrearProveedor.telefono,
+                empresa: dtoCrearProveedor.empresa,
                 Id_tienda: Id_tienda
             }
         });
@@ -38,16 +47,27 @@ export class ProveedoresService {
     }
     
     async editarProveedor(idProveedor: string, dtoEditarProveedor : DtoEditaeProveedor ,Id_tienda: string){
-        // Asegura que el proveedor pertenezca a la tienda
         const proveedor = await this.prisma.proveedor.findUnique({
             where: { Id: idProveedor}
         });
 
         if (!proveedor) throw new BadRequestException('El proveedor no existe.');
         if (proveedor.Id_tienda !== Id_tienda) throw new BadRequestException('No tienes permiso para editar este proveedor.');
-        
 
-        // Actualiza el proveedor
+        // Validar que no exista proveedor duplicado
+        if (dtoEditarProveedor.nombre && dtoEditarProveedor.nombre !== proveedor.nombre) {
+            const proveedorExistente = await this.prisma.proveedor.findFirst({
+                where: {
+                    nombre: dtoEditarProveedor.nombre,
+                    Id_tienda: Id_tienda,
+                    Id: { not: idProveedor }
+                }
+            });
+            if (proveedorExistente) {
+                throw new BadRequestException('Ya existe un proveedor con ese nombre en tu tienda.');
+            }
+        }
+
         return await this.prisma.proveedor.update({
             where: {Id: idProveedor},
             data: {
@@ -77,7 +97,6 @@ export class ProveedoresService {
         if (proveedor.Id_tienda !== Id_tienda) throw new BadRequestException('No tienes permiso para eliminar este proveedor.');
 
         await this.prisma.proveedor.delete({ where: { Id: idProveedor } });
-        return { message: 'Proveedor eliminado correctamente' };
+        return { success: true, message: 'Proveedor eliminado correctamente' };
     }
-
 }

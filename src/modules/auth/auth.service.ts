@@ -67,6 +67,10 @@ export class AuthService {
                 }
             })
 
+            if (!usuarioCreado.email) {
+                throw new ConflictException("El email del usuario no puede ser nulo");
+            }
+            
             await this.verificationService.enviarCodigoVerificacion(usuarioCreado.email);
             return usuarioCreado
         } catch (error) {

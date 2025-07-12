@@ -21,6 +21,7 @@ async function bootstrap() {
     .addTag('Categoria')
     .addTag('Proveedores')
     .addTag('Compras')
+    .addTag('Ventas')
     .addTag('Stock')
     .addBearerAuth({type: 'http', scheme: 'bearer', bearerFormat: 'jwt' },
       'access-token' // <-- Nombre del esquema de autenticación

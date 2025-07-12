@@ -5,7 +5,6 @@ import { DtoEditarProductoCompra } from './dto/editar/dto.editarcompra';
 import { DtoAgregarProductosCompra } from './dto/dto.agregarproducto';
 import { DtoEditarProductoCompraUnitario } from './dto/editar/dto.editarproductocompraUni';
 
-
 @Injectable()
 export class ComprasService {
     constructor(
@@ -103,6 +102,7 @@ export class ComprasService {
             };
         });
     }
+
     async obtenerTodasLasCompras(Id_tienda: string) {
         return this.prisma.compra.findMany({
             where: {
@@ -137,7 +137,6 @@ export class ComprasService {
             if (!compraExistente || compraExistente.proveedor.Id_tienda !== Id_tienda) {
                 throw new NotFoundException('No tienes permiso para editar esta compra');
             }
-
 
             // 2. Actualizar datos básicos de la compra
             const compraActualizada = await tx.compra.update({
@@ -188,7 +187,7 @@ export class ComprasService {
                 where: {
                     Id: id,
                     proveedor: {
-                        Id_tienda: Id_tienda  // ← ESTO ASEGURA QUE SOLO VEA SUS COMPRAS
+                        Id_tienda: Id_tienda
                     }
                 },
                 include: {
@@ -203,37 +202,31 @@ export class ComprasService {
                 }
             });
 
-            // Si no encuentra la compra, significa que no pertenece a su tienda
             if (!compraExistente) {
                 throw new NotFoundException(
-                    `❌ Compra no encontrada o no tienes permiso para eliminarla. ` +
-                    `Solo puedes eliminar compras de tu propia tienda.`
+                    `❌ Compra no encontrada o no tienes permiso para eliminarla. Solo puedes eliminar compras de tu propia tienda.`
                 );
             }
             if (!compraExistente.proveedor) {
                 throw new BadRequestException('La compra no tiene un proveedor asociado.');
             }
 
-            // 2. Validación adicional por seguridad
             if (compraExistente.proveedor.Id_tienda !== Id_tienda) {
                 throw new ForbiddenException(
-                    `🚫 No tienes permiso para eliminar esta compra. ` +
-                    `Esta compra pertenece a otra tienda.`
+                    `🚫 No tienes permiso para eliminar esta compra. Esta compra pertenece a otra tienda.`
                 );
             }
 
             // 3. Solo ajustar stock si el usuario lo solicita explícitamente
             if (opciones.ajustarStock) {
-                // Validar que hay suficiente stock antes de restar
                 for (const detalle of compraExistente.productocompra) {
                     if (!detalle.Id_producto || detalle.cantidad == null) continue;
 
-                    // IMPORTANTE: También validar que el producto pertenece a la tienda
                     const producto = await tx.producto.findFirst({
                         where: {
                             Id: detalle.Id_producto,
                             almacen: {
-                                Id_tienda: Id_tienda  // ← VALIDAR PRODUCTO DE LA TIENDA
+                                Id_tienda: Id_tienda
                             }
                         },
                         include: {
@@ -248,26 +241,21 @@ export class ComprasService {
                     }
 
                     if (producto.stock) {
-                        // Validar que el stock es suficiente
                         if (producto.stock < detalle.cantidad) {
                             throw new BadRequestException(
-                                `⚠️ No hay suficiente stock del producto ${producto.nombre || detalle.Id_producto} ` +
-                                `(actual: ${producto.stock}, necesario: ${detalle.cantidad}). ` +
-                                `¿Quieres eliminar solo el ticket sin afectar el stock?`
+                                `⚠️ No hay suficiente stock del producto ${producto.nombre || detalle.Id_producto} (actual: ${producto.stock}, necesario: ${detalle.cantidad}). ¿Quieres eliminar solo el ticket sin afectar el stock?`
                             );
                         }
                     }
-
                 }
 
-                // Restar stock (solo de productos de la tienda)
                 for (const detalle of compraExistente.productocompra) {
                     if (detalle.Id_producto && detalle.cantidad != null) {
                         await tx.producto.updateMany({
                             where: {
                                 Id: detalle.Id_producto,
                                 almacen: {
-                                    Id_tienda: Id_tienda  // ← SOLO ACTUALIZAR PRODUCTOS DE SU TIENDA
+                                    Id_tienda: Id_tienda
                                 }
                             },
                             data: { stock: { decrement: detalle.cantidad } }
@@ -276,7 +264,6 @@ export class ComprasService {
                 }
             }
 
-            // 4. Eliminar registros
             await tx.productocompra.deleteMany({
                 where: { Id_compra: id }
             });
@@ -301,7 +288,6 @@ export class ComprasService {
     async obtenerCompraPorId(id: string, Id_tienda: string) {
         const whereCondition: any = { Id: id };
 
-        // Si se especifica tienda, filtrar por proveedor de esa tienda
         if (Id_tienda) {
             whereCondition.proveedor = {
                 Id_tienda: Id_tienda
@@ -362,7 +348,6 @@ export class ComprasService {
         });
     }
 
-
     async agregarProductosACompra(id: string, dto: DtoAgregarProductosCompra, Id_tienda: string) {
         const compra = await this.prisma.compra.findUnique({
             where: { Id: id },
@@ -377,16 +362,13 @@ export class ComprasService {
         }
         return this.prisma.$transaction(async (tx) => {
             for (const prod of dto.productos) {
-                // Crear detalle
                 await tx.productocompra.create({
                     data: {
                         Id_compra: id,
                         Id_producto: prod.Id_producto,
                         cantidad: prod.cantidad,
-
                     }
                 });
-                // Actualizar stock
                 await tx.producto.update({
                     where: { Id: prod.Id_producto },
                     data: { stock: { increment: prod.cantidad } }
@@ -409,25 +391,21 @@ export class ComprasService {
             throw new NotFoundException('No tienes permiso para modificar esta compra');
         }
         return this.prisma.$transaction(async (tx) => {
-            // Buscar el detalle actual
             const detalle = await tx.productocompra.findUnique({
                 where: { Id: productoCompraId }
             });
             if (!detalle) throw new NotFoundException('Detalle de producto no encontrado');
 
-            // Validar que Id_producto y cantidad no sean null
             if (!detalle.Id_producto || detalle.cantidad == null) {
                 throw new Error('Detalle de compra con datos incompletos');
             }
 
-            // Ajustar stock
             const diferencia = dto.cantidad - detalle.cantidad;
             await tx.producto.update({
                 where: { Id: detalle.Id_producto },
                 data: { stock: { increment: diferencia } }
             });
 
-            // Actualizar el detalle
             await tx.productocompra.update({
                 where: { Id: productoCompraId },
                 data: { cantidad: dto.cantidad }
@@ -437,9 +415,7 @@ export class ComprasService {
         });
     }
 
-
     async eliminarProductoDeCompra(id: string, productoCompraId: string, Id_Tienda: string) {
-
         const compra = await this.prisma.compra.findUnique({
             where: { Id: id },
             include: { proveedor: true }
@@ -451,24 +427,20 @@ export class ComprasService {
             throw new NotFoundException('No tienes permiso para modificar esta compra');
         }
         return this.prisma.$transaction(async (tx) => {
-            // Buscar detalle
             const detalle = await tx.productocompra.findUnique({
                 where: { Id: productoCompraId }
             });
             if (!detalle) throw new NotFoundException('Detalle no encontrado');
 
-            // Validar que Id_producto y cantidad no sean null
             if (!detalle.Id_producto || detalle.cantidad == null) {
                 throw new Error('Detalle de compra con datos incompletos');
             }
 
-            // Revertir stock
             await tx.producto.update({
                 where: { Id: detalle.Id_producto },
                 data: { stock: { decrement: detalle.cantidad } }
             });
 
-            // Eliminar el detalle
             await tx.productocompra.delete({
                 where: { Id: productoCompraId }
             });
@@ -476,6 +448,4 @@ export class ComprasService {
             return { message: 'Producto eliminado de la compra' };
         });
     }
-
-
 }

@@ -9,7 +9,6 @@ export class StockService {
 
     async obtenerCantidadTotalProductos(Id_tienda: string) {
         try {
-            // Verificar que la tienda existe
             const tienda = await this.prisma.tienda.findUnique({
                 where: { Id: Id_tienda }
             });
@@ -18,7 +17,6 @@ export class StockService {
                 throw new BadRequestException('Tienda no encontrada');
             }
 
-            // Obtener almacenes de la tienda
             const almacenes = await this.prisma.almacen.findMany({
                 where: { Id_tienda: Id_tienda },
                 select: { Id: true }
@@ -33,7 +31,6 @@ export class StockService {
 
             const almacenIds = almacenes.map(a => a.Id);
 
-            // Contar productos en los almacenes de la tienda
             const totalProductos = await this.prisma.producto.count({
                 where: {
                     Id_almacen: { in: almacenIds }
@@ -51,10 +48,8 @@ export class StockService {
         }
     }
 
-    // Usa la columna stock real de cada producto
     async obtenerStockPorProducto(Id_tienda: string) {
         try {
-            // Obtener almacenes de la tienda
             const almacenes = await this.prisma.almacen.findMany({
                 where: { Id_tienda: Id_tienda },
                 select: { Id: true }
@@ -66,7 +61,6 @@ export class StockService {
 
             const almacenIds = almacenes.map(a => a.Id);
 
-            // Obtener productos con su stock actual
             const productos = await this.prisma.producto.findMany({
                 where: {
                     Id_almacen: { in: almacenIds }
@@ -107,7 +101,6 @@ export class StockService {
                 };
             }
 
-            // Procesar datos y agregar estado
             const productosConEstado = productos.map(producto => {
                 const stock = producto.stock || 0;
                 let estado: string;
@@ -132,7 +125,6 @@ export class StockService {
                 };
             });
 
-            // Calcular resumen
             const conStock = productosConEstado.filter(p => p.stock_actual > 0).length;
             const sinStock = productosConEstado.filter(p => p.stock_actual === 0).length;
 
@@ -149,10 +141,8 @@ export class StockService {
         }
     }
 
-    // Resumen completo del inventario
     async obtenerResumenCompleto(Id_tienda: string) {
         try {
-            // Obtener almacenes de la tienda
             const almacenes = await this.prisma.almacen.findMany({
                 where: { Id_tienda: Id_tienda },
                 select: { Id: true }
@@ -171,7 +161,6 @@ export class StockService {
 
             const almacenIds = almacenes.map(a => a.Id);
 
-            // Obtener productos con stock y precios
             const productos = await this.prisma.producto.findMany({
                 where: {
                     Id_almacen: { in: almacenIds }
@@ -193,7 +182,6 @@ export class StockService {
                 };
             }
 
-            // Calcular métricas
             let stockTotal = 0;
             let valorTotal = 0;
             let productosConStock = 0;
@@ -230,7 +218,6 @@ export class StockService {
         }
     }
 
-    //  Obtener productos agotados
     async obtenerProductosAgotados(Id_tienda: string) {
         try {
             const almacenes = await this.prisma.almacen.findMany({
@@ -290,7 +277,6 @@ export class StockService {
         }
     }
 
-    // ✅ NUEVO: Obtener productos con stock bajo
     async obtenerProductosStockBajo(Id_tienda: string, limite: number = 10) {
         try {
             const almacenes = await this.prisma.almacen.findMany({

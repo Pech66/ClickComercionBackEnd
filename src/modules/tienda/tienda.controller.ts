@@ -23,10 +23,10 @@ export class TiendaController {
     private readonly tiendaService: TiendaService,
     private readonly authService: AuthService,
     private prisma: PrismaService,
-  
   ){}
 
-    private async obtenerIdTienda(usuarioId: string): Promise<string> {
+  // Obtener el Id_tienda del usuario autenticado
+  private async obtenerIdTienda(usuarioId: string): Promise<string> {
     const user = await this.prisma.usuarios.findUnique({
       where: { Id: usuarioId },
       select: { Id_tienda: true }
@@ -81,16 +81,15 @@ export class TiendaController {
         tienda
       };
     } catch (error) {
-      if (error.message && (error.message.includes('no tiene tienda asignada') || error.message.includes('El usuario no tiene tienda asignada'))) {
+      if (
+        error.message &&
+        (error.message.includes('no tiene tienda asignada') || error.message.includes('El usuario no tiene tienda asignada'))
+      ) {
         throw new NotFoundException('No tienes una tienda asignada');
       }
-
       throw new BadRequestException(error.message || 'Error al obtener tu tienda');
     }
   }
-
-  // ❌ ENDPOINT ELIMINADO - Era inseguro
-  // @Get('ObtenerTienda/:Id') - ELIMINADO POR SEGURIDAD
 
   @Put('editar-mi-tienda')
   @ApiOperation({ summary: 'Editar mi tienda' })
@@ -104,10 +103,9 @@ export class TiendaController {
       if (usuario.rol !== Rol.ADMIN_TIENDA) {
         throw new ForbiddenException('No tienes permisos para editar tiendas');
       }
-    
-      // ✅ CORREGIDO - Obtener Id_tienda desde la BD
+      // Obtener Id_tienda desde la BD
       const Id_tienda = await this.obtenerIdTienda(usuario.id);
-    
+
       // Editar la tienda
       const tiendaEditada = await this.tiendaService.editarMiTienda(
         Id_tienda, 
@@ -119,9 +117,10 @@ export class TiendaController {
         tienda: tiendaEditada 
       };
     } catch (error) {
-      console.error('Error en editar tienda:', error);
-
-      if (error instanceof ForbiddenException || error instanceof BadRequestException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new BadRequestException(error.message || 'Error al editar la tienda');
@@ -136,77 +135,67 @@ export class TiendaController {
     @UsuarioActual() usuario,
   ) {
     try {
-      // Verificar que el usuario tenga rol ADMIN_TIENDA
+      // Verificar rol
       if (usuario.rol !== Rol.ADMIN_TIENDA) {
         throw new ForbiddenException('Solo los administradores de tienda pueden eliminar su tienda');
       }
-    
-      // ✅ CORREGIDO - Obtener Id_tienda desde la BD
+      // Obtener Id_tienda desde la BD
       const Id_tienda = await this.obtenerIdTienda(usuario.id);
-    
+
       // Obtener los datos completos del usuario para verificar la contraseña
       const usuarioCompleto = await this.prisma.usuarios.findUnique({
         where: { Id: usuario.id },
         select: { contrasena: true }
       });
-    
+
       if (!usuarioCompleto) {
         throw new BadRequestException('Usuario no encontrado');
       }
-    
+
       // Verificar la contraseña 
       const bcrypt = require('bcrypt');
       const contrasenaValida = await bcrypt.compare(
         dtoEliminarTienda.contrasena, 
         usuarioCompleto.contrasena
       );
-    
+
       if (!contrasenaValida) {
         throw new UnauthorizedException('Contraseña incorrecta');
       }
-    
+
       // Eliminar la tienda
       const resultado = await this.tiendaService.eliminarMiTienda(usuario.id, Id_tienda);
-    
+
       return {
         mensaje: 'Tu tienda ha sido eliminada correctamente',
         advertencia: 'Esta acción no se puede deshacer'
       };
     } catch (error) {
-      if (error instanceof ForbiddenException || 
-          error instanceof BadRequestException || 
-          error instanceof UnauthorizedException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException
+      ) {
         throw error;
       }
       throw new BadRequestException(error.message || 'Error al eliminar la tienda');
     }
   }
 
-  @Get('todasLasTiendas')
-  @ApiOperation({ summary: 'Obtener todas las tiendas (Solo SuperAdmin)' })
-  @UseGuards(JwtAuthGuard)
-  async obtenerTodasLasTiendas(@UsuarioActual() usuario) {
+  // SOLO PARA SUPERADMIN: Desactivar su propio servicio
+  @Put('desactivar-superadmin')
+  @ApiOperation({ summary: 'Desactivar el servicio de Superadmin (solo propio)' })
+  @Roles(Rol.SUPERADMIN)
+  async desactivarSuperadmin(@UsuarioActual() usuario) {
     try {
-      // Verificar que el usuario sea SuperAdmin
-      if (usuario.rol !== Rol.SUPERADMIN) {
-        throw new ForbiddenException('Solo los SuperAdmin pueden ver todas las tiendas');
-      }
-    
-      const tiendas = await this.tiendaService.obtenerTodasLasTiendas();
-      
-      return {
-        mensaje: 'Tiendas obtenidas correctamente',
-        total: tiendas.length,
-        tiendas
-      };
+      // Desactivar solo su propia cuenta (no puede afectar a otros)
+      await this.prisma.usuarios.update({
+        where: { Id: usuario.id },
+        data: { activo: false },
+      });
+      return { mensaje: 'Servicio de Superadmin desactivado correctamente' };
     } catch (error) {
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
-      throw new BadRequestException(error.message || 'Error al obtener las tiendas');
+      throw new BadRequestException(error.message || 'Error al desactivar el servicio');
     }
   }
-
-
-
 }

@@ -1,75 +1,110 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { DtoCrearAlmacen } from './dtos/dtos.crearalmacen';
-import { AlmacenService } from './almacen.service';
-import { UsuarioActual } from 'src/components/decoradores/usuario.actual';
-import { DtoEditarAlmacen } from './dtos/dto.editaralmacen';
-import { RolesGuard } from 'src/components/roles/roles.guard';
-import { Roles } from 'src/components/roles/roles.decorator';
-import { Rol } from 'src/components/roles/roles.enum';
-import { PerfilService } from '../perfil/perfil.service';
-import { AuthGuard } from '@nestjs/passport';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ValidacionService } from 'src/components/validaciondatos/validacionService';
 
-@ApiTags('Almacen')
-@Controller('almacen')
-@ApiBearerAuth('access-token')
-@Roles(Rol.ADMIN_TIENDA)
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-export class AlmacenController {
+@Injectable()
+export class AlmacenService {
   constructor(
-    private readonly almacenService: AlmacenService,
-    private readonly prisma: PrismaService
+    private prisma: PrismaService,
+    private validacionService: ValidacionService,
   ) { }
 
-
-  private async obtenerIdTienda(usuarioId: string): Promise<string> {
-    const user = await this.prisma.usuarios.findUnique({
-      where: { Id: usuarioId },
-      select: { Id_tienda: true }
-    });
-
-    if (!user?.Id_tienda) {
-      throw new BadRequestException('Debes crear tu tienda primero.');
+  async crearAlmacen(nombre: string, idTienda: string) {
+    // Validar nombre
+    const validarNombre = this.validacionService.validateNombre(nombre);
+    if (!validarNombre) {
+      throw new BadRequestException('El nombre del almacén no es válido');
     }
 
-    return user.Id_tienda;
+    // Antes de crear, valida que la tienda exista
+    const tienda = await this.prisma.tienda.findUnique({
+      where: { Id: idTienda },
+    });
+    if (!tienda) {
+      throw new BadRequestException('La tienda asociada no existe');
+    }
+
+    // Validar que no exista ya un almacén para esta tienda
+    const almacenesExistentes = await this.prisma.almacen.findMany({
+      where: { Id_tienda: idTienda }
+    });
+    if (almacenesExistentes.length > 0) {
+      throw new BadRequestException('Ya existe un almacén para esta tienda. Solo puedes tener uno.');
+    }
+
+    // creamos el almacén
+    return this.prisma.almacen.create({
+      data: {
+        nombre,
+        Id_tienda: idTienda,
+      },
+    });
   }
 
-  @Post('crear-almacen')
-  @ApiOperation({ summary: 'Crear un almacén propio' })
-  async crearAlmacen(
-    @Body() dto: DtoCrearAlmacen,
-    @UsuarioActual() usuario,
-  ) {
-    const Id_tienda = await this.obtenerIdTienda(usuario.id);
-    return this.almacenService.crearAlmacen(dto.nombre, Id_tienda);
+  async obtenerMiAlmacen(idTienda: string) {
+    const almacenes = await this.prisma.almacen.findMany({
+      where: { Id_tienda: idTienda },
+      select: {
+        Id: true,
+        nombre: true,
+        tienda: {
+          select: {
+            Id: true,
+            nombre: true,
+            ubicacion: true,
+            telefono: true,
+          }
+        }
+      }
+    });
+
+    if (!almacenes || almacenes.length === 0) {
+      throw new BadRequestException('No se encontró almacén para esta tienda');
+    }
+
+    return almacenes;
   }
 
-  @Get('obtenerMialmacen')
-  @ApiOperation({ summary: 'Obtener mi almacén' })
-  async obtenerMiAlmacen(@UsuarioActual() usuario) {
-    const Id_tienda = await this.obtenerIdTienda(usuario.id);
-    return this.almacenService.obtenerMiAlmacen(Id_tienda);
+  async editarMiAlmacen(nombre: string, idAlmacen: string, idTienda: string) {
+    // Buscamos que el almacén pertenezca a la tienda del usuario
+    const almacen = await this.prisma.almacen.findFirst({
+      where: {
+        Id: idAlmacen,
+        Id_tienda: idTienda,
+      }
+    });
+
+    if (!almacen) {
+      throw new BadRequestException('No tienes permisos para editar este almacén');
+    }
+
+    // Validar nombre
+    const validarNombre = this.validacionService.validateNombre(nombre);
+    if (!validarNombre) {
+      throw new BadRequestException('El nombre del almacén no es válido');
+    }
+
+    // Actualizamos el almacén
+    return this.prisma.almacen.update({
+      where: { Id: idAlmacen },
+      data: { nombre },
+    });
   }
 
-  @Put('editar-almacen/:id')
-  @ApiOperation({ summary: 'Editar un almacén propio' })
-  async editarAlmacen(
-    @UsuarioActual() usuario,
-    @Body() dtoEditarAlmcen: DtoEditarAlmacen,
-    @Param('id') idAlmacen: string,
-  ) {
-    const Id_tienda = await this.obtenerIdTienda(usuario.id);
-    return this.almacenService.editarMiAlmacen(dtoEditarAlmcen.nombre, idAlmacen, Id_tienda);
+  // Opcional: Eliminar almacén
+  async eliminarMiAlmacen(idAlmacen: string, idTienda: string) {
+    // Verificar pertenencia
+    const almacen = await this.prisma.almacen.findFirst({
+      where: {
+        Id: idAlmacen,
+        Id_tienda: idTienda,
+      }
+    });
+    if (!almacen) {
+      throw new BadRequestException('No tienes permisos para eliminar este almacén');
+    }
+    return this.prisma.almacen.delete({
+      where: { Id: idAlmacen }
+    });
   }
-
-
-
-
-
-
-
-
-
 }

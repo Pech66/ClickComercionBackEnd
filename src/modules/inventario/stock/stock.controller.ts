@@ -42,6 +42,7 @@ export class StockController {
             }
         }
     })
+    @ApiResponse({ status: 400, description: 'Error en la solicitud o negocio.' })
     async obtenerTotalProductos(@UsuarioActual() usuario) {
         try {
             const Id_tienda = await this.obtenerIdTienda(usuario.id);
@@ -82,6 +83,7 @@ export class StockController {
             }
         }
     })
+    @ApiResponse({ status: 400, description: 'Error en la solicitud o negocio.' })
     async obtenerStockPorProducto(@UsuarioActual() usuario) {
         try {
             const Id_tienda = await this.obtenerIdTienda(usuario.id);
@@ -107,6 +109,7 @@ export class StockController {
             }
         }
     })
+    @ApiResponse({ status: 400, description: 'Error en la solicitud o negocio.' })
     async obtenerResumenStock(@UsuarioActual() usuario) {
         try {
             const Id_tienda = await this.obtenerIdTienda(usuario.id);
@@ -140,6 +143,7 @@ export class StockController {
             }
         }
     })
+    @ApiResponse({ status: 400, description: 'Error en la solicitud o negocio.' })
     async obtenerProductosAgotados(@UsuarioActual() usuario) {
         try {
             const Id_tienda = await this.obtenerIdTienda(usuario.id);
@@ -151,6 +155,8 @@ export class StockController {
 
     @Get('stock-bajo')
     @ApiOperation({ summary: 'Obtener productos con stock bajo (menos de 10 unidades)' })
+    @ApiResponse({ status: 200, description: 'Lista de productos con stock bajo.' })
+    @ApiResponse({ status: 400, description: 'Error en la solicitud o negocio.' })
     async obtenerProductosStockBajo(@UsuarioActual() usuario) {
         try {
             const Id_tienda = await this.obtenerIdTienda(usuario.id);
