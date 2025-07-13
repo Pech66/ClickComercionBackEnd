@@ -154,9 +154,9 @@
       // 3. Generar nuevo código (6 dígitos)
       const codigo = randomInt(100000, 999999).toString();
 
-      // 4. Configurar expiración (15 minutos)
+      // 4. Configurar expiración (2 minutos)
       const ahora = Date.now();
-      const expiracion = ahora + 15 * 60 * 1000; // 15 minutos
+      const expiracion = ahora + 2 * 60 * 1000; // 2 minutos
 
       // 5. Guardar SOLO en memoria (no en BD)
       this.codigosReset.set(email, {

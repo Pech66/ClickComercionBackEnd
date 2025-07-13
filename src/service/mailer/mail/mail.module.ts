@@ -19,7 +19,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           },
         },
         defaults: {
-          from: '"ClickComercio" <no-reply@clickcomercio.com>',
+          from: 'ClickComercio<pechmoises08@gmail.com>',
         },
       }),
       inject: [ConfigService],
