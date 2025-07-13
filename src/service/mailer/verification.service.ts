@@ -229,7 +229,7 @@
     // Generar nuevo código
     const nuevoCodigo = randomInt(100000, 999999).toString();
     const ahora = Date.now();
-    const nuevaExpiracion = ahora + 15 * 60 * 1000;
+    const nuevaExpiracion = ahora + 2 * 60 * 1000;
 
     this.codigosReset.set(email, {
       codigo: nuevoCodigo,

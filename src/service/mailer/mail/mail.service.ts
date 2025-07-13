@@ -1,48 +1,45 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
+import * as SibApiV3Sdk from 'sib-api-v3-sdk';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter;
+  private readonly apiInstance: SibApiV3Sdk.TransactionalEmailsApi;
+  private readonly sender: { name: string; email: string };
 
   constructor(private readonly config: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.config.get('MAIL_HOST'),
-      port: Number(this.config.get('MAIL_PORT')),
-      secure: false, 
-      auth: {
-        user: this.config.get('MAIL_USER'),
-        pass: this.config.get('MAIL_PASS'),
-      },
-    });
+    const brevoApiKey = this.config.get<string>('BREVO_API_KEY');
+    SibApiV3Sdk.ApiClient.instance.authentications['api-key'].apiKey = brevoApiKey;
+    this.apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+    this.sender = {
+      name: this.config.get('BREVO_FROM_NAME') || 'ClickComercio',
+      email: this.config.get('BREVO_FROM_EMAIL') || 'pechmoises08@gmail.com'
+    };
   }
 
   async envioVerificacion(email: string, codigo: string) {
     const html = this.cuerpoDelMensaje(codigo);
     const subject = 'Verificación de Cuenta';
-    const text = `Tu código de verificación es: ${codigo}. Este código expirará en 15 minutos.`;
-    
+
     try {
-      await this.transporter.sendMail({
-        from: this.config.get('MAIL_FROM'),
-        to: email,
+      await this.apiInstance.sendTransacEmail({
+        sender: this.sender,
+        to: [{ email }],
         subject,
-        text,
-        html,
+        htmlContent: html,
       });
       this.logger.log(`Correo enviado a ${email}`);
     } catch (error) {
       this.logger.error(`Error al enviar correo a ${email}: ${error.message}`);
-      throw error; // Re-lanzar el error para manejarlo en otro lugar si es necesario
+      throw error;
     }
   }
 
-  
 
-    private cuerpoDelMensaje(codigo: string): string {
-      return `
+
+  private cuerpoDelMensaje(codigo: string): string {
+    return `
       <div style="font-family: Arial, sans-serif; max-width: 420px; margin: 40px auto; background: linear-gradient(135deg, #ede9fe 0%, #f3f4f6 100%); border-radius: 20px; box-shadow: 0 8px 24px rgba(143, 135, 241, 0.13); padding: 0;">
         <div style="background: linear-gradient(135deg, #8F87F1 75%, #c4b5fd 100%); border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 36px 0 20px 0; text-align: center;">
           <h1 style="color: #fff; font-size: 2em; font-weight: 700; margin: 0;">Verificación de Cuenta</h1>
@@ -69,30 +66,30 @@ export class MailService {
     `;
 
 
-    }
+  }
 
-    async enviarCodigoRecuperacion(email: string, codigo: string) {
-      const html = this.cuerpoMensajeRecuperacion(codigo);
-      const subject = 'Recuperación de Contraseña';
-      const text = `Tu código de recuperación es: ${codigo}. Este código expirará en 15 minutos.`;
-      
-      try {
-        await this.transporter.sendMail({
-          from: this.config.get('MAIL_FROM'),
-          to: email,
-          subject,
-          text,
-          html,
-        });
-        this.logger.log(`Código de recuperación enviado a ${email}`);
-      } catch (error) {
-        this.logger.error(`Error al enviar código de recuperación a ${email}: ${error.message}`);
-        throw error;
-      }
+
+  async enviarCodigoRecuperacion(email: string, codigo: string) {
+    const html = this.cuerpoMensajeRecuperacion(codigo);
+    const subject = 'Recuperación de Contraseña';
+
+    try {
+      await this.apiInstance.sendTransacEmail({
+        sender: this.sender,
+        to: [{ email }],
+        subject,
+        htmlContent: html,
+      });
+      this.logger.log(`Código de recuperación enviado a ${email}`);
+    } catch (error) {
+      this.logger.error(`Error al enviar código de recuperación a ${email}: ${error.message}`);
+      throw error;
     }
-    
-    private cuerpoMensajeRecuperacion(codigo: string): string {
-     return `
+  }
+
+
+  private cuerpoMensajeRecuperacion(codigo: string): string {
+    return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.07); padding: 32px;">
         <div style="text-align: center; margin-bottom: 24px;">
           <h1 style="color: #8F87F1; font-size: 2.2em; margin: 0;">Recuperación de Cuenta</h1>
@@ -114,6 +111,6 @@ export class MailService {
         <p style="text-align: center; color: #bdbdbd; font-size: 0.92em; margin-top: 40px;">&copy; ${new Date().getFullYear()} ClickComercio</p>
       </div>
     `;
-    }
+  }
 }
 
