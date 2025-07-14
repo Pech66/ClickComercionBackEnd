@@ -70,7 +70,7 @@ export class AuthService {
             if (!usuarioCreado.email) {
                 throw new ConflictException("El email del usuario no puede ser nulo");
             }
-            
+
             await this.verificationService.enviarCodigoVerificacion(usuarioCreado.email);
             return usuarioCreado
         } catch (error) {
@@ -206,6 +206,11 @@ export class AuthService {
             message: 'Si el email existe, recibirás un código de recuperación',
             expiresIn: '15 minutos'
         };
+    }
+
+    // VERIFICAR CÓDIGO DE RECUPERACIÓN
+    async verifyRecoveryCode(email: string, codigo: string): Promise<boolean> {
+        return this.verificationService.verificarCodigoRecup(email, codigo);
     }
 
     // RESET PASSWORD

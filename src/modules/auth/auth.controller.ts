@@ -105,6 +105,39 @@ export class AuthController {
     }
   }
 
+  @Post('verify-recovery-code')
+  @ApiOperation({ summary: 'Verificar código de recuperación de contraseña' })
+  @ApiBody({
+    description: 'Datos para verificar código de recuperación',
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'usuario@ejemplo.com',
+          description: 'Email registrado del usuario'
+        },
+        codigo: {
+          type: 'string',
+          example: '123456',
+          description: 'Código de verificación enviado al email',
+          minLength: 6,
+          maxLength: 6
+        }
+      },
+      required: ['email', 'codigo']
+    }
+  })
+  async verifyRecoveryCode(@Body() body: { email?: string; codigo?: string }) {
+    if (!body?.email || !body?.codigo) {
+      throw new BadRequestException('El email y el código son obligatorios');
+    }
+    const valido = await this.authService.verifyRecoveryCode(body.email, body.codigo);
+    if (!valido) throw new BadRequestException('Código inválido o expirado');
+    return { message: 'Código válido' };
+  }
+
   // 3. POST /auth/reset-password
   @Post('reset-password')
   @ApiOperation({ summary: 'Restablecer contraseña con código' })
