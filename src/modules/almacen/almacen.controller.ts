@@ -1,8 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, UseGuards } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ValidacionService } from 'src/components/validaciondatos/validacionService';
+import { AuthGuard } from '@nestjs/passport';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
-@Injectable()
+@ApiTags('Almacen')
+@ApiBearerAuth('access-token')
+@UseGuards(AuthGuard('jwt'))
 export class AlmacenService {
   constructor(
     private prisma: PrismaService,
