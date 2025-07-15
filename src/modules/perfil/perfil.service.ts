@@ -6,83 +6,83 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class PerfilService {
-    constructor(
-        private prisma: PrismaService,
-        private cloudinaryService: CloudinaryService,
+  constructor(
+    private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
 
-    ){}
+  ) { }
 
-    async obtenerDatosUsuario(id: string) {
-     const usuario = await this.prisma.usuarios.findUnique({
-       where: { Id: id },
-       select: {
-         Id: true,
-         nombre: true,
-         email: true,
-         rol: true,
-         Id_tienda: true,
-         fotoUrl: true,
+  async obtenerDatosUsuario(id: string) {
+    const usuario = await this.prisma.usuarios.findUnique({
+      where: { Id: id },
+      select: {
+        Id: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        Id_tienda: true,
+        fotoUrl: true,
+        Id_almacen: true,
+      },
+    });
+    if (!usuario) throw new UnauthorizedException('Usuario no encontrado');
+    return usuario;
+  }
 
-       },
-     });
-     if (!usuario) throw new UnauthorizedException('Usuario no encontrado');
-     return usuario;
-    }
+  async obtenerUsuarioPorId(id: string) {
+    return this.prisma.usuarios.findUnique({
+      where: { Id: id },
+      include: {
+        tienda: true, // O elimina esto si no quieres traer la tienda
+      },
+    });
+  }
 
-    async obtenerUsuarioPorId(id: string) {
-        return this.prisma.usuarios.findUnique({
-          where: { Id: id },
-          include: {
-            tienda: true, // O elimina esto si no quieres traer la tienda
-          },
-        });
-    }
-
-    async editarUsuario(id: string, dtoEditarUsuario: DtoEditarUsuario, file?: Express.Multer.File) {
-      try {
-        let fotoUrl: string | undefined;
-        if (file) {
-            const resultado = await this.cloudinaryService.uploadFile(file);
-            fotoUrl = resultado.secure_url;
-        }
-        
-
-        const usuarioActualizado = await this.prisma.usuarios.update({
-            data: {
-                nombre: dtoEditarUsuario.nombre? dtoEditarUsuario.nombre : undefined,
-                fotoUrl: fotoUrl? fotoUrl : undefined,
-            },
-            where: { Id: id },
-            
-        });
-        return usuarioActualizado;
-        
-      } catch (error) {
-        throw new BadRequestException("Error al editar el usuario: " + error.message);
+  async editarUsuario(id: string, dtoEditarUsuario: DtoEditarUsuario, file?: Express.Multer.File) {
+    try {
+      let fotoUrl: string | undefined;
+      if (file) {
+        const resultado = await this.cloudinaryService.uploadFile(file);
+        fotoUrl = resultado.secure_url;
       }
+
+
+      const usuarioActualizado = await this.prisma.usuarios.update({
+        data: {
+          nombre: dtoEditarUsuario.nombre ? dtoEditarUsuario.nombre : undefined,
+          fotoUrl: fotoUrl ? fotoUrl : undefined,
+        },
+        where: { Id: id },
+
+      });
+      return usuarioActualizado;
+
+    } catch (error) {
+      throw new BadRequestException("Error al editar el usuario: " + error.message);
     }
+  }
 
-    async eliminarCuenta(id: string) {
-        try {
-            const usuarioExistente = await this.prisma.usuarios.findUnique({
-                where: { Id: id },
-            });
+  async eliminarCuenta(id: string) {
+    try {
+      const usuarioExistente = await this.prisma.usuarios.findUnique({
+        where: { Id: id },
+      });
 
-            if (!usuarioExistente) {
-                throw new UnauthorizedException("Usuario no encontrado");
-            }
+      if (!usuarioExistente) {
+        throw new UnauthorizedException("Usuario no encontrado");
+      }
 
-            await this.prisma.usuarios.delete({
-                where: { Id: id },
-            });
+      await this.prisma.usuarios.delete({
+        where: { Id: id },
+      });
 
-            return { message: "Usuario eliminado exitosamente" };
-        } catch (error) {
-            throw new UnauthorizedException("Error al eliminar el usuario: " + error.message);
-        }
+      return { message: "Usuario eliminado exitosamente" };
+    } catch (error) {
+      throw new UnauthorizedException("Error al eliminar el usuario: " + error.message);
     }
+  }
 
-    async cambiarContrasena(usuarioId: string, contrasenaActual: string, contrasenaNueva: string) {
+  async cambiarContrasena(usuarioId: string, contrasenaActual: string, contrasenaNueva: string) {
     // 1. Buscar usuario
     const usuario = await this.prisma.usuarios.findUnique({
       where: { Id: usuarioId },
@@ -121,7 +121,7 @@ export class PerfilService {
   }
 
 
-  
+
 
 
 

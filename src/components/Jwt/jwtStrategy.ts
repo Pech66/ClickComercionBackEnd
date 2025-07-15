@@ -27,6 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         verificado: payload.verificado,
         activo: payload.activo,
         tiendaId: payload.tiendaId,
+        almacenId: payload.almacenId, 
       };
   }
   
