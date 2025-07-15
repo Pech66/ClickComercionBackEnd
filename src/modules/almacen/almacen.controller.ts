@@ -5,6 +5,9 @@ import {
   Req,
   UseGuards,
   ForbiddenException,
+  Get,
+  Delete,
+  NotFoundException,
 } from '@nestjs/common';
 import { AlmacenService } from './almacen.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,18 +19,39 @@ import { DtoCrearAlmacen } from './dtos/dtos.crearalmacen';
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
 export class AlmacenController {
-  constructor(private readonly almacenService: AlmacenService) {}
+  constructor(private readonly almacenService: AlmacenService) { }
 
   @Post('crear')
-  async crearAlmacen(@Body() dto: DtoCrearAlmacen, @Req() req) {
-    const usuario = req.user;
-    // Solo AdminTienda puede crear almacén y solo para su tienda
-    if (usuario.rol !== 'AdminTienda') {
-      throw new ForbiddenException('Solo el AdminTienda puede crear almacenes.');
-    }
-    if (usuario.Id_tienda !== dto.Id_tienda) {
-      throw new ForbiddenException('No tienes permisos para crear el almacén en otra tienda.');
-    }
-    return this.almacenService.crearAlmacen(dto.nombre, dto.Id_tienda, usuario.Id);
+async crearAlmacen(@Body() dto: DtoCrearAlmacen, @Req() req) {
+  const usuario = req.user;
+  if (usuario.rol !== 'ADMIN_TIENDA') {
+    throw new ForbiddenException('Solo el AdminTienda puede crear almacenes.');
   }
+  // Asegúrate de usar el campo correcto
+  return this.almacenService.crearAlmacen(dto.nombre, usuario.id);
+}
+
+@Get('obtener')
+async obtenerNombreAlmacen(@Req() req) {
+  const usuario = req.user;
+  if (usuario.rol !== 'ADMIN_TIENDA') {
+    throw new ForbiddenException('Solo el AdminTienda puede consultar el almacén.');
+  }
+  return await this.almacenService.obtenerNombreAlmacen(usuario.id);
+}
+
+@Delete('eliminar')
+async eliminarAlmacen(@Req() req) {
+  const usuario = req.user;
+  if (usuario.rol !== 'ADMIN_TIENDA') {
+    throw new ForbiddenException('Solo el AdminTienda puede eliminar su almacén.');
+  }
+  const eliminado = await this.almacenService.eliminarAlmacen(usuario.id);
+  if (!eliminado) {
+    throw new NotFoundException('No existe un almacén asociado a tu tienda.');
+  }
+  return { mensaje: 'Almacén eliminado correctamente.' };
+}
+
+
 }

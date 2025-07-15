@@ -26,6 +26,8 @@ import { PerfilModule } from './modules/perfil/perfil.module';
 import { AdministradorController } from './modules/administrador/administrador.controller';
 import { AdministradorService } from './modules/administrador/administrador.service';
 import { AdministradorModule } from './modules/administrador/administrador.module';
+import { DashboardService } from './modules/dashboard/dashboard.service';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 
 @Module({
@@ -48,8 +50,9 @@ import { AdministradorModule } from './modules/administrador/administrador.modul
     StockModule,
     PerfilModule,
     AdministradorModule,
+    DashboardModule,
   ],
   controllers: [AppController,TiendaController,ProductosController,ComprasController, StockController, AdministradorController,],
-  providers: [AppService, ProductosService, TiendaService, AlmacenService, StockService, AdministradorService],
+  providers: [AppService, ProductosService, TiendaService, AlmacenService, StockService, AdministradorService, DashboardService],
 })
 export class AppModule {}

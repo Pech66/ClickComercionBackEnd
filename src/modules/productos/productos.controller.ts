@@ -89,7 +89,7 @@ export class ProductosController {
         throw new BadRequestException('No hay almacén registrado para tu tienda.');
       }
       dtoproductonormal.Id_almacen = almacen.Id;
-
+      console.log('DTO recibido:', dtoproductonormal);
       return await this.productoService.normal(dtoproductonormal, file);
     } catch (error) {
       throw new BadRequestException(error.message || 'Error al crear el producto normal.');

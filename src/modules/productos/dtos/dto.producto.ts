@@ -26,8 +26,8 @@ export class DtoProductoNormal {
     @Type(() => Number)
     @IsNumber()
     @IsOptional()
-    @ApiProperty({ example: 1000.00, required: false })
-    precioporveedor?: number;
+    @ApiProperty({ example: 1000.00})
+    preciodeproveedor?: number;
 
     @IsOptional()
     @IsString()

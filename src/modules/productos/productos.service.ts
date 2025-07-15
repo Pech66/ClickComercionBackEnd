@@ -5,15 +5,23 @@ import { DtoProductoGranel } from './dtos/dto.productoganel';
 import { DtoProductoNormal } from './dtos/dto.producto';
 import { DtoEditarProducto } from './dtos/dto.editarproductoNormal';
 import { ValidacionService } from 'src/components/validaciondatos/validacionService';
+function isValidNumberField(val: unknown): val is number {
+  if (val === "") return false;
+  if (val === undefined || val === null) return false;
+  if (typeof val === "string") return !isNaN(Number(val));
+  if (typeof val === "number") return true;
+  return false;
+}
 
 @Injectable()
 export class ProductosService {
   constructor(
-      private cloudinaryService: CloudinaryService,
-      private prisma: PrismaService,
-      private validacionService: ValidacionService
-  ){}
+    private cloudinaryService: CloudinaryService,
+    private prisma: PrismaService,
+    private validacionService: ValidacionService
+  ) { }
 
+  
   // Crear producto normal
   async normal(dto: DtoProductoNormal, file?: Express.Multer.File) {
     try {
@@ -49,8 +57,8 @@ export class ProductosService {
       this.validacionService.validateDescripcion(dto.descripcion);
       this.validacionService.validateCodigoBarra(dto.codigobarra);
       this.validacionService.validatePrecio(dto.precioventa);
-      if (dto.precioporveedor !== undefined && dto.precioporveedor !== null) {
-        this.validacionService.validatePrecio(dto.precioporveedor);
+      if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== null) {
+        this.validacionService.validatePrecio(dto.preciodeproveedor);
       }
 
       const productoCreado = await this.prisma.producto.create({
@@ -59,13 +67,15 @@ export class ProductosService {
           descripcion: dto.descripcion,
           codigobarra: dto.codigobarra,
           precioventa: dto.precioventa,
-          preciodeproveedor: dto.precioporveedor,
+          preciodeproveedor: dto.preciodeproveedor,
           esgranel: false,
           fotoUrl,
           Id_almacen: dto.Id_almacen,
           Id_categoria: dto.Id_categoria && dto.Id_categoria.trim() !== "" ? dto.Id_categoria : null,
         },
+
       });
+      console.log('Producto creado:', productoCreado);
       return productoCreado;
     } catch (error) {
       throw new BadRequestException(error.message || 'Error al crear el producto.');
@@ -131,7 +141,6 @@ export class ProductosService {
     }
   }
 
-  // Editar producto, verificando pertenencia
   async editarProducto(id: string, dto: DtoEditarProducto, fotoUrl?: string) {
     // Buscar el producto y validar existencia
     const producto = await this.prisma.producto.findUnique({
@@ -165,26 +174,37 @@ export class ProductosService {
     if (dto.nombre !== undefined && dto.nombre !== "") dataUpdate.nombre = dto.nombre;
     if (dto.descripcion !== undefined && dto.descripcion !== "") dataUpdate.descripcion = dto.descripcion;
     if (dto.codigobarra !== undefined && dto.codigobarra !== "") dataUpdate.codigobarra = dto.codigobarra;
-    if (dto.precioventa !== undefined && dto.precioventa !== 0) dataUpdate.precioventa = dto.precioventa;
-    if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== 0) dataUpdate.preciodeproveedor = dto.preciodeproveedor;
-    if (dto.preciokilo !== undefined && dto.preciokilo !== 0) dataUpdate.preciokilo = dto.preciokilo;
+    if (isValidNumberField(dto.precioventa)) dataUpdate.precioventa = Number(dto.precioventa);
+    if (isValidNumberField(dto.preciodeproveedor)) dataUpdate.preciodeproveedor = Number(dto.preciodeproveedor);
+    if (isValidNumberField(dto.preciokilo)) dataUpdate.preciokilo = Number(dto.preciokilo);
+    // Validar y asignar solo si el valor es un número válido (no vacío, no undefined, no null, no NaN)
+    if (dto.precioventa !== undefined && dto.precioventa !== null && !isNaN(Number(dto.precioventa))) {
+      dataUpdate.precioventa = Number(dto.precioventa);
+    }
+    if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== null && !isNaN(Number(dto.preciodeproveedor))) {
+      dataUpdate.preciodeproveedor = Number(dto.preciodeproveedor);
+    }
+    if (dto.preciokilo !== undefined && dto.preciokilo !== null && !isNaN(Number(dto.preciokilo))) {
+      dataUpdate.preciokilo = Number(dto.preciokilo);
+    }
     if (dto.unidaddemedida !== undefined && dto.unidaddemedida !== "") dataUpdate.unidaddemedida = dto.unidaddemedida;
     if (dto.esgranel !== undefined) dataUpdate.esgranel = dto.esgranel;
     if (fotoUrl !== undefined) dataUpdate.fotoUrl = fotoUrl;
 
+    // Reglas para alternar normal <-> granel
     if (dto.esgranel !== undefined && dto.esgranel !== producto.esgranel) {
-      if (dto.esgranel) dataUpdate.precioventa = null;
-      else {
+      if (dto.esgranel) {
+        dataUpdate.precioventa = null;
+      } else {
         dataUpdate.preciokilo = null;
         dataUpdate.unidaddemedida = null;
       }
     }
-
-    // Actualiza en la base de datos
     return await this.prisma.producto.update({
       where: { Id: id },
       data: dataUpdate
     });
+
   }
 
   // Obtener producto por ID (ya cumple multi-inquilino)

@@ -156,7 +156,7 @@ export class VerificationService {
 
     // 4. Configurar expiración (15 minutos)
     const ahora = Date.now();
-    const expiracion = ahora + 5 * 60 * 1000; // 15 minutos
+    const expiracion = ahora + 15 * 60 * 1000; // 15 minutos
 
     // 5. Guardar SOLO en memoria (no en BD)
     this.codigosReset.set(email, {
@@ -229,7 +229,7 @@ export class VerificationService {
     // Generar nuevo código
     const nuevoCodigo = randomInt(100000, 999999).toString();
     const ahora = Date.now();
-    const nuevaExpiracion = ahora + 5 * 60 * 1000; // 3
+    const nuevaExpiracion = ahora + 15 * 60 * 1000; // 5 minutos
 
     this.codigosReset.set(email, {
       codigo: nuevoCodigo,
