@@ -1,21 +1,68 @@
 import { Injectable } from '@nestjs/common';
+import { endOfDay, startOfDay } from 'date-fns';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class DashboardService {
     constructor(private prisma: PrismaService) { }
 
-    // 1. Resumen de la tienda
     async resumenTienda(idTienda: string) {
+        // 1. Suma total de stock de productos en la tienda
+        const productos = await this.prisma.producto.findMany({
+            where: {
+                almacen: {
+                    tienda: {
+                        Id: idTienda,
+                    },
+                },
+            },
+            select: { stock: true },
+        });
+        const cantidadProductoActual = productos.reduce((suma, p) => suma + (p.stock ?? 0), 0);
+
+        // 2. Cantidad de ventas del día (en UTC)
+        const hoyUTC = new Date();
+        const ventasHoy = await this.prisma.venta.count({
+            where: {
+                Id_tienda: idTienda,
+                fechaDeVenta: {
+                    gte: startOfDay(hoyUTC),
+                    lt: endOfDay(hoyUTC),
+                },
+            },
+        });
+
+        // 3. Cantidad de productos con stock bajo (≤ 5 unidades/kilos)
+        const stockBajo = await this.prisma.producto.count({
+            where: {
+                almacen: {
+                    tienda: {
+                        Id: idTienda,
+                    },
+                },
+                stock: { lte: 5 },
+            },
+        });
+
+        // 4. Cantidad de categorías
         const cantidadCategorias = await this.prisma.categoria.count({
             where: { Id_tienda: idTienda },
         });
+
+        // 5. Cantidad de proveedores
         const cantidadProveedores = await this.prisma.proveedor.count({
             where: { Id_tienda: idTienda },
         });
-        return { cantidadCategorias, cantidadProveedores };
-    }
 
+        return {
+            cantidadProductoActual,
+            ventasHoy,
+            stockBajo,
+            cantidadCategorias,
+            cantidadProveedores,
+        };
+    }
+    
     // 2. Ventas
     async datosVentas(idTienda: string) {
         const totalVentas = await this.prisma.venta.count({

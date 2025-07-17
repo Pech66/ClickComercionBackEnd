@@ -9,7 +9,7 @@ export class TiendaService {
   constructor(
     private prisma: PrismaService,
     private validacionService: ValidacionService
-  ){}
+  ) { }
 
   async registrarTienda(dtoCrearTienda: DtoCrearTienda) {
     // Validaciones
@@ -30,7 +30,7 @@ export class TiendaService {
     // Obtener el usuario con su tienda actual desde la BD
     const usuario = await this.prisma.usuarios.findUnique({
       where: { Id: usuarioId },
-      select: { 
+      select: {
         Id_tienda: true,
         tienda: {
           select: {
@@ -53,13 +53,13 @@ export class TiendaService {
 
   async editarMiTienda(tiendaId: string, dtoEditarTienda: DtoEditarTienda) {
     // Validación de datos
-    if(dtoEditarTienda.telefono !== undefined) {
+    if (dtoEditarTienda.telefono !== undefined) {
       const numeroValido = this.validacionService.validateNumeroTelefono(dtoEditarTienda.telefono);
-      if(!numeroValido) throw new Error('El número de teléfono no es válido');
-    } 
-    if(dtoEditarTienda.nombre !== undefined) {
+      if (!numeroValido) throw new Error('El número de teléfono no es válido');
+    }
+    if (dtoEditarTienda.nombre !== undefined) {
       const nombreValido = this.validacionService.validateNombre(dtoEditarTienda.nombre);
-      if(!nombreValido) throw new Error('El nombre de la tienda debe ser válido');
+      if (!nombreValido) throw new Error('El nombre de la tienda debe ser válido');
     }
 
     // Asegurarse que solo modifica su propia tienda
@@ -118,11 +118,16 @@ export class TiendaService {
         where: { Id: tiendaId }
       });
 
-      return { 
+      return {
         mensaje: 'Tienda eliminada correctamente',
         usuariosDesasignados: tienda.usuarios.length,
         almacenesEliminados: tienda.almacen.length
       };
+    });
+  }
+  async buscarPorId(idTienda: string) {
+    return this.prisma.tienda.findUnique({
+      where: { Id: idTienda }
     });
   }
 }

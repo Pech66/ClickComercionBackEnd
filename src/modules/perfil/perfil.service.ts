@@ -22,7 +22,6 @@ export class PerfilService {
         rol: true,
         Id_tienda: true,
         fotoUrl: true,
-        Id_almacen: true,
       },
     });
     if (!usuario) throw new UnauthorizedException('Usuario no encontrado');
@@ -120,6 +119,11 @@ export class PerfilService {
     };
   }
 
+  async buscarPorId(id: string) {
+    return this.prisma.usuarios.findUnique({
+      where: { Id: id },
+    });
+  }
 
 
 

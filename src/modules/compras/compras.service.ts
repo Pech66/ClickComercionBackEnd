@@ -56,10 +56,17 @@ export class ComprasService {
         // 1. Validar proveedor
         await this.validarProveedor(dto.Id_proveedor, Id_tienda);
 
+
+        if (dto.sku && !/^[a-zA-Z0-9\-]+$/.test(dto.sku)) {
+            throw new BadRequestException('Sku,Folio inválido, solo permite letras, números y guiones.');
+        }
+        if (dto.total <= 0) {
+            throw new BadRequestException('El total de la compra debe ser mayor a 0.');
+        }
         return this.prisma.$transaction(async (tx) => {
             const fechaConvertida = new Date(dto.fecha + 'T00:00:00.000Z');
 
-            // 2. Crear la compra
+            // Crear la compra
             const compra = await tx.compra.create({
                 data: {
                     Id_proveedor: dto.Id_proveedor,
@@ -69,7 +76,7 @@ export class ComprasService {
                 }
             });
 
-            // 3. Procesar productos de la compra
+            // Procesar productos de la compra
             for (const prod of dto.productos) {
                 // ✅ Validación mejorada de producto
                 const producto = await this.validarProducto(prod.Id_producto, Id_tienda);
@@ -115,13 +122,14 @@ export class ComprasService {
                         producto: true
                     }
                 }
-            }
+            },
+            orderBy: { fecha: 'desc' }
         });
     }
 
-    async editarCompra(id: string, dto: DtoEditarProductoCompra, Id_tienda: string) {
+    async editarCompraTicket(id: string, dto: DtoEditarProductoCompra, Id_tienda: string) {
         return this.prisma.$transaction(async (tx) => {
-            // 1. Verificar que la compra existe
+            //  Verificar que la compra existe
             const compraExistente = await tx.compra.findUnique({
                 where: { Id: id },
                 include: {
@@ -149,141 +157,12 @@ export class ComprasService {
                 }
             });
 
-            // 3. Actualizar productos si se proporcionan
-            if (dto.productos && dto.productos.length > 0) {
-                for (const prod of dto.productos) {
-                    if (prod.Id) {
-                        // Actualizar producto existente
-                        await tx.productocompra.update({
-                            where: { Id: prod.Id },
-                            data: {
-                                ...(prod.cantidad !== undefined && { cantidad: prod.cantidad }),
-                                ...(prod.Id_producto && { Id_producto: prod.Id_producto }),
-                            }
-                        });
-                    } else if (prod.Id_producto && prod.cantidad) {
-                        // Crear nuevo producto en la compra
-                        await tx.productocompra.create({
-                            data: {
-                                Id_compra: id,
-                                Id_producto: prod.Id_producto,
-                                cantidad: prod.cantidad,
-                            }
-                        });
-                    }
-                }
-            }
+
 
             return compraActualizada;
         });
     }
 
-    async eliminarCompra(id: string, Id_tienda: string, opciones: {
-        ajustarStock?: boolean
-    } = {}) {
-        return this.prisma.$transaction(async (tx) => {
-            // 1. VALIDACIÓN CRÍTICA: Verificar que la compra pertenece a la tienda del usuario
-            const compraExistente = await tx.compra.findFirst({
-                where: {
-                    Id: id,
-                    proveedor: {
-                        Id_tienda: Id_tienda
-                    }
-                },
-                include: {
-                    productocompra: true,
-                    proveedor: {
-                        select: {
-                            Id: true,
-                            nombre: true,
-                            Id_tienda: true
-                        }
-                    }
-                }
-            });
-
-            if (!compraExistente) {
-                throw new NotFoundException(
-                    `❌ Compra no encontrada o no tienes permiso para eliminarla. Solo puedes eliminar compras de tu propia tienda.`
-                );
-            }
-            if (!compraExistente.proveedor) {
-                throw new BadRequestException('La compra no tiene un proveedor asociado.');
-            }
-
-            if (compraExistente.proveedor.Id_tienda !== Id_tienda) {
-                throw new ForbiddenException(
-                    `🚫 No tienes permiso para eliminar esta compra. Esta compra pertenece a otra tienda.`
-                );
-            }
-
-            // 3. Solo ajustar stock si el usuario lo solicita explícitamente
-            if (opciones.ajustarStock) {
-                for (const detalle of compraExistente.productocompra) {
-                    if (!detalle.Id_producto || detalle.cantidad == null) continue;
-
-                    const producto = await tx.producto.findFirst({
-                        where: {
-                            Id: detalle.Id_producto,
-                            almacen: {
-                                Id_tienda: Id_tienda
-                            }
-                        },
-                        include: {
-                            almacen: true
-                        }
-                    });
-
-                    if (!producto) {
-                        throw new BadRequestException(
-                            `❌ Producto ${detalle.Id_producto} no encontrado en tu tienda`
-                        );
-                    }
-
-                    if (producto.stock) {
-                        if (producto.stock < detalle.cantidad) {
-                            throw new BadRequestException(
-                                `⚠️ No hay suficiente stock del producto ${producto.nombre || detalle.Id_producto} (actual: ${producto.stock}, necesario: ${detalle.cantidad}). ¿Quieres eliminar solo el ticket sin afectar el stock?`
-                            );
-                        }
-                    }
-                }
-
-                for (const detalle of compraExistente.productocompra) {
-                    if (detalle.Id_producto && detalle.cantidad != null) {
-                        await tx.producto.updateMany({
-                            where: {
-                                Id: detalle.Id_producto,
-                                almacen: {
-                                    Id_tienda: Id_tienda
-                                }
-                            },
-                            data: { stock: { decrement: detalle.cantidad } }
-                        });
-                    }
-                }
-            }
-
-            await tx.productocompra.deleteMany({
-                where: { Id_compra: id }
-            });
-
-            await tx.compra.delete({
-                where: { Id: id }
-            });
-
-            return {
-                message: opciones.ajustarStock
-                    ? `✅ Compra eliminada y stock ajustado`
-                    : `✅ Ticket eliminado sin afectar el stock actual`,
-                compra_eliminada: {
-                    id: compraExistente.Id,
-                    proveedor: compraExistente.proveedor.nombre,
-                    tienda: Id_tienda
-                }
-            };
-        });
-    }
 
     async obtenerCompraPorId(id: string, Id_tienda: string) {
         const whereCondition: any = { Id: id };
@@ -348,6 +227,88 @@ export class ComprasService {
         });
     }
 
+    async editarCompra(id: string, dto: DtoEditarProductoCompra, Id_tienda: string) {
+        return this.prisma.$transaction(async (tx) => {
+            // 1. Verificar que la compra existe y pertenece a la tienda
+            const compraExistente = await tx.compra.findUnique({
+                where: { Id: id },
+                include: {
+                    proveedor: true,
+                    productocompra: true,
+                }
+            });
+
+            if (!compraExistente?.proveedor) {
+                throw new BadRequestException('La compra no tiene un proveedor asociado.');
+            }
+            if (compraExistente.proveedor.Id_tienda !== Id_tienda) {
+                throw new NotFoundException('No tienes permiso para editar esta compra');
+            }
+
+            // Validaciones especiales para la fecha
+            if (dto.fecha && compraExistente.productocompra.length > 0) {
+                const nuevaFecha = new Date(dto.fecha);
+                const fechaActual = compraExistente.fecha ?? nuevaFecha;
+
+                // 1. No permitir que la compra se "adelante" sobre ventas que ya existen antes de la nueva fecha
+                const idsConNull: (string | null)[] = compraExistente.productocompra.map(p => p.Id_producto);
+                const ids: string[] = idsConNull.filter((id): id is string => id !== null);
+
+                // Ahora puedes usar 'ids' en el filtro 'in'
+                const ventasPrevias = await tx.detallesventa.findFirst({
+                    where: {
+                        Id_producto: { in: ids },
+                        venta: {
+                            fechaDeVenta: {
+                                lte: nuevaFecha // Venta previa o igual a la nueva fecha de compra
+                            }
+                        }
+                    }
+                });
+                if (ventasPrevias) {
+                    throw new BadRequestException(
+                        'No puedes poner la fecha de la compra igual o posterior a ventas existentes de sus productos.'
+                    );
+                }
+
+                // 2. No permitir "atrasar" la compra si hay ventas de ese producto entre la nueva fecha y la fecha original
+                if (fechaActual > nuevaFecha) {
+                    for (const detalle of compraExistente.productocompra) {
+                        const ventaExistente = await tx.detallesventa.findFirst({
+                            where: {
+                                Id_producto: detalle.Id_producto,
+                                venta: {
+                                    fechaDeVenta: {
+                                        gt: nuevaFecha,
+                                        lt: fechaActual
+                                    }
+                                }
+                            }
+                        });
+                        if (ventaExistente) {
+                            throw new BadRequestException(
+                                `No puedes mover la compra a una fecha anterior (${dto.fecha}) porque existen ventas del producto ${detalle.Id_producto} después de esa fecha.`
+                            );
+                        }
+                    }
+                }
+            }
+
+            // Actualizar datos básicos
+            const compraActualizada = await tx.compra.update({
+                where: { Id: id },
+                data: {
+                    ...(dto.fecha && { fecha: new Date(dto.fecha) }),
+                    ...(dto.total !== undefined && { total: dto.total }),
+                    ...(dto.sku !== undefined && { sku: dto.sku }),
+                    ...(dto.Id_proveedor !== undefined && { Id_proveedor: dto.Id_proveedor }),
+                }
+            });
+
+            return compraActualizada;
+        });
+    }
+
     async agregarProductosACompra(id: string, dto: DtoAgregarProductosCompra, Id_tienda: string) {
         const compra = await this.prisma.compra.findUnique({
             where: { Id: id },
@@ -356,19 +317,50 @@ export class ComprasService {
         if (!compra?.proveedor) {
             throw new BadRequestException('La compra no tiene un proveedor asociado.');
         }
-
         if (!compra || compra.proveedor.Id_tienda !== Id_tienda) {
             throw new NotFoundException('No tienes permiso para modificar esta compra');
         }
+
         return this.prisma.$transaction(async (tx) => {
             for (const prod of dto.productos) {
-                await tx.productocompra.create({
-                    data: {
-                        Id_compra: id,
-                        Id_producto: prod.Id_producto,
-                        cantidad: prod.cantidad,
-                    }
+                // Validar cantidad
+                if (!prod.cantidad || prod.cantidad <= 0) {
+                    throw new BadRequestException(
+                        `La cantidad para el producto ${prod.Id_producto} debe ser mayor que cero`
+                    );
+                }
+                // Validar que el producto exista y pertenezca a la tienda
+                const producto = await tx.producto.findUnique({
+                    where: { Id: prod.Id_producto },
+                    include: { almacen: true }
                 });
+                if (!producto) {
+                    throw new BadRequestException(`Producto ${prod.Id_producto} no existe`);
+                }
+                if (!producto.almacen || producto.almacen.Id_tienda !== Id_tienda) {
+                    throw new ForbiddenException(`No tienes permiso para usar el producto ${prod.Id_producto}`);
+                }
+                // Revisar si ya existe el producto en esa compra
+                const detalleExistente = await tx.productocompra.findFirst({
+                    where: { Id_compra: id, Id_producto: prod.Id_producto }
+                });
+                if (detalleExistente) {
+                    // Sumar cantidad al detalle existente
+                    await tx.productocompra.update({
+                        where: { Id: detalleExistente.Id },
+                        data: { cantidad: { increment: prod.cantidad } }
+                    });
+                } else {
+                    // Crear nuevo detalle de compra
+                    await tx.productocompra.create({
+                        data: {
+                            Id_compra: id,
+                            Id_producto: prod.Id_producto,
+                            cantidad: prod.cantidad,
+                        }
+                    });
+                }
+                // Actualizar stock del producto
                 await tx.producto.update({
                     where: { Id: prod.Id_producto },
                     data: { stock: { increment: prod.cantidad } }
@@ -378,7 +370,12 @@ export class ComprasService {
         });
     }
 
-    async editarProductoDeCompra(id: string, productoCompraId: string, dto: DtoEditarProductoCompraUnitario, Id_tienda: string) {
+    async editarProductoDeCompra(
+        id: string,
+        productoCompraId: string,
+        dto: DtoEditarProductoCompraUnitario,
+        Id_tienda: string
+    ) {
         const compra = await this.prisma.compra.findUnique({
             where: { Id: id },
             include: { proveedor: true }
@@ -390,22 +387,68 @@ export class ComprasService {
         if (!compra || compra.proveedor.Id_tienda !== Id_tienda) {
             throw new NotFoundException('No tienes permiso para modificar esta compra');
         }
+        if (!compra.fecha) {
+            throw new BadRequestException('La compra no tiene fecha registrada.');
+        }
+
         return this.prisma.$transaction(async (tx) => {
             const detalle = await tx.productocompra.findUnique({
                 where: { Id: productoCompraId }
             });
             if (!detalle) throw new NotFoundException('Detalle de producto no encontrado');
-
             if (!detalle.Id_producto || detalle.cantidad == null) {
                 throw new Error('Detalle de compra con datos incompletos');
             }
 
+            // Validar nueva cantidad
+            if (dto.cantidad == null || dto.cantidad <= 0) {
+                throw new BadRequestException('La cantidad debe ser mayor que cero. Si deseas eliminar el producto, usa el endpoint correspondiente.');
+            }
+
+            // Validar que el producto siga existiendo y pertenezca a la tienda
+            const producto = await tx.producto.findUnique({
+                where: { Id: detalle.Id_producto },
+                include: { almacen: true }
+            });
+            if (!producto) {
+                throw new BadRequestException(`Producto ${detalle.Id_producto} no existe`);
+            }
+            if (!producto.almacen || producto.almacen.Id_tienda !== Id_tienda) {
+                throw new ForbiddenException(`No tienes permiso para usar el producto ${detalle.Id_producto}`);
+            }
+
+            // PROTECCIÓN: No permitir editar si hay ventas posteriores
+            const ventasPosteriores = await tx.detallesventa.findFirst({
+                where: {
+                    Id_producto: detalle.Id_producto,
+                    venta: {
+                        // PRÁCTICO Y SEGURO: sabemos que compra.fecha NO es null porque lo validamos arriba
+                        fechaDeVenta: { gt: compra.fecha as Date }
+                    }
+                }
+            });
+            if (ventasPosteriores) {
+                throw new BadRequestException(
+                    `No puedes editar la cantidad porque ya existen ventas de este producto después de la compra.`
+                );
+            }
+
             const diferencia = dto.cantidad - detalle.cantidad;
+            const stockActual = Number(producto.stock ?? 0);
+
+            if (diferencia < 0 && stockActual < Math.abs(diferencia)) {
+                throw new BadRequestException(
+                    `No hay suficiente stock del producto ${producto.nombre || detalle.Id_producto} para disminuir la cantidad`
+                );
+            }
+
+            // Actualizar el stock
             await tx.producto.update({
                 where: { Id: detalle.Id_producto },
                 data: { stock: { increment: diferencia } }
             });
 
+            // Actualizar el detalle
             await tx.productocompra.update({
                 where: { Id: productoCompraId },
                 data: { cantidad: dto.cantidad }
@@ -415,37 +458,8 @@ export class ComprasService {
         });
     }
 
-    async eliminarProductoDeCompra(id: string, productoCompraId: string, Id_Tienda: string) {
-        const compra = await this.prisma.compra.findUnique({
-            where: { Id: id },
-            include: { proveedor: true }
-        });
-        if (!compra?.proveedor) {
-            throw new BadRequestException('La compra no tiene un proveedor asociado.');
-        }
-        if (!compra || compra.proveedor.Id_tienda !== Id_Tienda) {
-            throw new NotFoundException('No tienes permiso para modificar esta compra');
-        }
-        return this.prisma.$transaction(async (tx) => {
-            const detalle = await tx.productocompra.findUnique({
-                where: { Id: productoCompraId }
-            });
-            if (!detalle) throw new NotFoundException('Detalle no encontrado');
 
-            if (!detalle.Id_producto || detalle.cantidad == null) {
-                throw new Error('Detalle de compra con datos incompletos');
-            }
 
-            await tx.producto.update({
-                where: { Id: detalle.Id_producto },
-                data: { stock: { decrement: detalle.cantidad } }
-            });
 
-            await tx.productocompra.delete({
-                where: { Id: productoCompraId }
-            });
 
-            return { message: 'Producto eliminado de la compra' };
-        });
-    }
 }

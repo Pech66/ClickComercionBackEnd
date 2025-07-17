@@ -31,10 +31,4 @@ export class DtoEditarProductoCompra {
     @IsOptional()
     Id_proveedor?: string;
 
-    @IsOptional()
-    @ApiProperty({ description: "Productos comprados", type: [DtoEditarProuctoCompra],})
-    @ValidateNested({ each: true }) //Validar cada elemento del array
-    @Type(() => DtoEditarProuctoCompra) // Transformar cada elemento a DtoProuctoCompra
-    @ArrayMinSize(1) // Asegurar que el array tenga al menos un elemento
-    productos?: DtoEditarProuctoCompra[];
 }

@@ -8,6 +8,7 @@ import { AuthModule } from 'src/modules/auth/auth.module';
 @Module({
   imports: [PrismaModule, AuthModule],
   providers: [TiendaService,ValidacionService],
-  controllers: [TiendaController]
+  controllers: [TiendaController],
+  exports: [TiendaService],
 })
 export class TiendaModule {}

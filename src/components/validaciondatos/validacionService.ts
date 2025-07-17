@@ -6,7 +6,7 @@ export class ValidacionService {
 
     //Metodo para valida la contraseña
     validatePassword(contrasena: string): boolean {
-        const minLength = 12;
+        const minLength = 6;
         const hasUpperCase = /[A-Z]/.test(contrasena);
         const hasLowerCase = /[a-z]/.test(contrasena);
         const hasNumbers = /\d/.test(contrasena);
@@ -56,7 +56,7 @@ export class ValidacionService {
         if (typeof nombreLimpio !== 'string' || nombreLimpio === '') {
             throw new Error('El nombre de usuario no es válido.');
         }
-        if (nombre.length < 3 || nombre.length > 25) {
+        if (nombre.length < 3 || nombre.length > 5) {
             throw new Error('El nombre de usuario debe tener entre 3 y 25 caracteres.');
         }
         if (!nombreContexto.test(nombre)) {
@@ -103,8 +103,8 @@ export class ValidacionService {
         if (typeof nombre !== 'string' || nombre.trim() === '') {
             throw new Error('El nombre no es válido.');
         }
-        if (nombre.length < 3 || nombre.length > 25) {
-            throw new Error('El nombre debe tener entre 3 y 50 caracteres.');
+        if (nombre.length < 3 || nombre.length > 15) {
+            throw new Error('El nombre debe tener entre 3 min y 15 max.');
         }
         return true;
     }
@@ -112,7 +112,7 @@ export class ValidacionService {
     validateDescripcion(descripcion: string): boolean {
 
         if (descripcion.length < 10 || descripcion.length > 200) {
-            throw new Error('La descripción debe tener entre 10 y 200 caracteres.');
+            throw new Error('La descripción debe tener entre 10 min y 200 max.');
         }
         return true;
     }

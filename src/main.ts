@@ -23,10 +23,11 @@ async function bootstrap() {
     .addTag('Compras')
     .addTag('Ventas')
     .addTag('Stock')
+    .addTag('HistorialVentas')
     .addTag('Dashboard')
     .addTag('Administrador')
     .addBearerAuth({type: 'http', scheme: 'bearer', bearerFormat: 'jwt' },
-      'access-token' // <-- Nombre del esquema de autenticación
+      'access-token' 
     ) 
     .build();
   const document = SwaggerModule.createDocument(app, options);

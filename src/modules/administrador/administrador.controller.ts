@@ -1,12 +1,18 @@
-import { Controller, Get, Param, Post, Delete, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Param, Post, Delete, NotFoundException, UseGuards } from '@nestjs/common';
 
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdministradorService } from './administrador.service';
+import { Roles } from 'src/components/roles/roles.decorator';
+import { Rol } from 'src/components/roles/roles.enum';
+import { RolesGuard } from 'src/components/roles/roles.guard';
+import { AuthGuard } from '@nestjs/passport';
 
 
-
-@ApiTags('superadmin')
-@Controller('superadmin/usuarios-admin')
+@ApiBearerAuth('access-token')
+@Roles(Rol.SUPERADMIN)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@ApiTags('Administrador')
+@Controller('administrador')
 export class AdministradorController {
   constructor(private readonly administradorService: AdministradorService) {}
 

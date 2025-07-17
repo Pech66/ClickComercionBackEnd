@@ -182,20 +182,5 @@ export class TiendaController {
     }
   }
 
-  // SOLO PARA SUPERADMIN: Desactivar su propio servicio
-  @Put('desactivar-superadmin')
-  @ApiOperation({ summary: 'Desactivar el servicio de Superadmin (solo propio)' })
-  @Roles(Rol.SUPERADMIN)
-  async desactivarSuperadmin(@UsuarioActual() usuario) {
-    try {
-      // Desactivar solo su propia cuenta (no puede afectar a otros)
-      await this.prisma.usuarios.update({
-        where: { Id: usuario.id },
-        data: { activo: false },
-      });
-      return { mensaje: 'Servicio de Superadmin desactivado correctamente' };
-    } catch (error) {
-      throw new BadRequestException(error.message || 'Error al desactivar el servicio');
-    }
-  }
+  
 }

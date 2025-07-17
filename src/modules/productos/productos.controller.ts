@@ -216,12 +216,6 @@ export class ProductosController {
           nullable: true,
           description: 'Unidad de medida (kg, gramos, litros, etc.)'
         },
-        esgranel: {
-          type: 'boolean',
-          example: false,
-          default: false,
-          description: 'Indica si el producto se vende a granel'
-        },
 
         // Imagen del producto
         foto: {
