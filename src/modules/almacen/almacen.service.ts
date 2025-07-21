@@ -10,25 +10,24 @@ export class AlmacenService {
   ) { }
 
   async crearAlmacen(nombre: string, idUsuario: string) {
-    // Validar nombre
-    const validarNombre = this.validacionService.validateNombre(nombre);
-    if (!validarNombre) {
+    // 1. Valida nombre
+    if (!this.validacionService.validateNombre(nombre)) {
       throw new BadRequestException('El nombre del almacén no es válido');
     }
 
-    // Obtener el usuario y validar que sea Admin de alguna tienda
+    // 2. Busca usuario y rol
     const usuario = await this.prisma.usuarios.findUnique({
       where: { Id: idUsuario },
       include: { tienda: true },
     });
-    if (!usuario || usuario.rol !== 'ADMIN_TIENDA') {
+    if (!usuario || String(usuario.rol).toUpperCase() !== 'ADMIN_TIENDA') {
       throw new ForbiddenException('Solo el AdminTienda puede crear almacenes.');
     }
     if (!usuario.Id_tienda || !usuario.tienda) {
       throw new BadRequestException('No tienes una tienda asociada.');
     }
 
-    // Validar que no exista ya un almacén para esa tienda
+    // 3. Aislamiento: solo un almacén por tienda
     const almacenExistente = await this.prisma.almacen.findFirst({
       where: { Id_tienda: usuario.Id_tienda }
     });
