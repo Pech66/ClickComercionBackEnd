@@ -27,7 +27,7 @@ export class AlmacenController {
   constructor(
     private readonly almacenService: AlmacenService,
     private readonly usuarioService: PerfilService
-  ) {}
+  ) { }
 
   @Post('crear')
   async crearAlmacen(@Body() dto: DtoCrearAlmacen, @Req() req) {
@@ -41,7 +41,7 @@ export class AlmacenController {
       throw new ForbiddenException('Solo el AdminTienda puede crear almacén.');
     }
     // Llama al servicio
-    return this.almacenService.crearAlmacen(dto.nombre, usuario.Id_tienda);
+    return this.almacenService.crearAlmacen(dto.nombre, usuario.Id); // <-- PASA el id de usuario realmente
   }
 
   @Get('obtener')
