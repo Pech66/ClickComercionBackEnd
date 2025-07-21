@@ -4,14 +4,12 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { AgregarProductoVentaDto } from './dto/agregar.producto.venta.dto';
 import { FinalizarVentaDto } from './dto/finalizar.venta.dto';
 
-
 @Injectable()
 export class VentasService {
     constructor(private prisma: PrismaService) { }
 
     async iniciarVenta(Id_tienda: string) {
         try {
-            // Verificar que la tienda existe
             const tienda = await this.prisma.tienda.findUnique({
                 where: { Id: Id_tienda },
                 select: { Id: true, nombre: true }
@@ -21,7 +19,6 @@ export class VentasService {
                 throw new NotFoundException(`Tienda con ID ${Id_tienda} no encontrada`);
             }
 
-            // Verificar si hay una venta activa
             const ventaActiva = await this.prisma.venta.findFirst({
                 where: {
                     Id_tienda: Id_tienda,
@@ -41,7 +38,6 @@ export class VentasService {
                 };
             }
 
-            // Crear nueva venta
             const nuevaVenta = await this.prisma.venta.create({
                 data: {
                     Id_tienda: Id_tienda,
@@ -66,32 +62,72 @@ export class VentasService {
         }
     }
 
-    async buscarProductosDisponibles(ventaId: string, Id_tienda: string) {
-        // Verificar que la venta existe y pertenece a la tienda
+    async buscarProductosDisponibles(ventaId: string, Id_tienda: string, query?: string, categoriaId?: string) {
         const venta = await this.validarVentaActiva(ventaId, Id_tienda);
 
-        // Construir condiciones de búsqueda
-        const baseWhere = {
-            almacen: { Id_tienda: Id_tienda },
+        const where: any = {
+            almacen: { Id_tienda },
             stock: { gt: 0 }
         };
+        if (query) {
+            where.OR = [
+                { nombre: { contains: query } },
+                { codigobarra: { equals: query } }
+            ];
+        }
+        if (categoriaId) {
+            where.Id_categoria = categoriaId;
+        }
 
         const productos = await this.prisma.producto.findMany({
+            where,
             include: this.getProductoInclude(),
             orderBy: [{ nombre: 'asc' }],
-            take: 15
+            take: 20
         });
 
+        return this.formatearRespuestaBusqueda(ventaId, venta, productos);
     }
 
-  
+    async buscarProductoPorCodigo(ventaId: string, Id_tienda: string, codigo: string) {
+        await this.validarVentaActiva(ventaId, Id_tienda);
+
+        const producto = await this.prisma.producto.findFirst({
+            where: {
+                codigobarra: codigo,
+                almacen: { Id_tienda: Id_tienda },
+                stock: { gt: 0 }
+            },
+            include: this.getProductoInclude()
+        });
+
+        if (!producto) {
+            throw new NotFoundException('Producto no encontrado o sin stock en tu tienda');
+        }
+
+        return {
+            producto: {
+                id: producto.Id,
+                nombre: producto.nombre,
+                codigo_barra: producto.codigobarra,
+                foto_url: producto.fotoUrl,
+                stock_disponible: producto.stock,
+                es_granel: producto.esgranel,
+                unidad_medida: producto.unidaddemedida,
+                precio_venta: producto.precioventa,
+                tipo_producto: producto.esgranel ? 'granel' : 'normal',
+                precio_mostrar: producto.precioventa,
+                requiere_cantidad: producto.esgranel,
+                instrucciones: producto.esgranel
+                    ? `Especificar cantidad en ${producto.unidaddemedida || 'kg'}`
+                    : 'Se agrega 1 unidad automáticamente (o especificar cantidad)'
+            }
+        };
+    }
 
     async verVentaActual(ventaId: string, Id_tienda: string) {
         const venta = await this.prisma.venta.findFirst({
-            where: {
-                Id: ventaId,
-                Id_tienda: Id_tienda
-            },
+            where: { Id: ventaId, Id_tienda: Id_tienda },
             include: {
                 tienda: { select: { Id: true, nombre: true } },
                 detallesventa: {
@@ -128,15 +164,13 @@ export class VentasService {
                     nombre: detalle.producto?.nombre || 'Sin nombre',
                     descripcion: detalle.producto?.descripcion || '',
                     esgranel: detalle.producto?.esgranel || false,
-                    unidad: detalle.producto?.unidaddemedida || 'unidades',
+                    unidad: detalle.producto?.unidaddemedida || (detalle.producto?.esgranel ? 'kg' : 'unidades'),
                     stock_disponible: detalle.producto?.stock || 0,
                     almacen: detalle.producto?.almacen?.nombre || 'Sin almacén',
                     fotoUrl: detalle.producto?.fotoUrl
                 },
                 cantidad_en_venta: Number(detalle.cantidad_recibida || 0),
-                precio_unitario: detalle.producto?.esgranel
-                    ? Number(detalle.producto?.preciokilo || 0)
-                    : Number(detalle.producto?.precioventa || 0),
+                precio_unitario: Number(detalle.producto?.precioventa ?? 0),
                 subtotal: Number(detalle.subtotal || 0),
                 puede_aumentar: !estaFinalizada && (detalle.producto?.stock || 0) > Number(detalle.cantidad_recibida || 0)
             })),
@@ -150,10 +184,7 @@ export class VentasService {
 
     async aumentarCantidadProducto(ventaId: string, productoId: string, cantidadAdicional: number, Id_tienda: string) {
         return this.prisma.$transaction(async (tx) => {
-            // Verificar que la venta pertenece a esta tienda
             const venta = await this.validarVentaActiva(ventaId, Id_tienda);
-
-            // Verificar que el producto pertenece a un almacén de esta tienda
             const producto = await this.validarProductoParaVenta(productoId, Id_tienda);
 
             const detalle = await tx.detallesventa.findFirst({
@@ -173,16 +204,15 @@ export class VentasService {
                 );
             }
 
-            const precioUnitario = producto.esgranel
-                ? Number(producto.preciokilo || 0)
-                : Number(producto.precioventa || 0);
+            const precioUnitario = Number(producto.precioventa ?? 0);
             const nuevoSubtotal = nuevaCantidad * precioUnitario;
 
             const detalleActualizado = await tx.detallesventa.update({
                 where: { Id: detalle.Id },
                 data: {
                     cantidad_recibida: nuevaCantidad,
-                    subtotal: new Decimal(nuevoSubtotal)
+                    subtotal: new Decimal(nuevoSubtotal),
+                    precio_unitario: precioUnitario
                 }
             });
 
@@ -202,20 +232,162 @@ export class VentasService {
         });
     }
 
+    async agregarProductoInteligente(ventaId: string, data: AgregarProductoVentaDto, Id_tienda: string) {
+        return this.prisma.$transaction(async (tx) => {
+            const venta = await this.validarVentaActiva(ventaId, Id_tienda);
+            const producto = await this.validarProductoParaVenta(data.Id_producto, Id_tienda);
+
+            const stockActual = producto.stock ?? 0;
+
+            let cantidad: number;
+            if (producto.esgranel) {
+                if (!data.cantidad || data.cantidad <= 0) {
+                    throw new BadRequestException(
+                        `El producto "${producto.nombre}" es a granel. Debe especificar la cantidad en ${producto.unidaddemedida || 'kg'}`
+                    );
+                }
+                cantidad = data.cantidad;
+            } else {
+                cantidad = data.cantidad || 1;
+            }
+
+            if (stockActual < cantidad) {
+                throw new BadRequestException(
+                    `Stock insuficiente. Disponible: ${stockActual} ${producto.unidaddemedida || (producto.esgranel ? 'kg' : 'unidades')}, Requerido: ${cantidad} ${producto.unidaddemedida || (producto.esgranel ? 'kg' : 'unidades')}`
+                );
+            }
+
+            const detalleExistente = await tx.detallesventa.findFirst({
+                where: {
+                    Id_venta: ventaId,
+                    Id_producto: data.Id_producto
+                }
+            });
+
+            const precioUnitario = Number(producto.precioventa ?? 0);
+
+            if (detalleExistente) {
+                const cantidadExistente = detalleExistente.cantidad_recibida ? Number(detalleExistente.cantidad_recibida) : 0;
+                const nuevaCantidad = cantidadExistente + cantidad;
+
+                if (nuevaCantidad > stockActual) {
+                    throw new BadRequestException(
+                        `La cantidad total (${nuevaCantidad}) excedería el stock disponible (${stockActual})`
+                    );
+                }
+
+                const nuevoSubtotal = nuevaCantidad * precioUnitario;
+
+                const detalleActualizado = await tx.detallesventa.update({
+                    where: { Id: detalleExistente.Id },
+                    data: {
+                        cantidad_recibida: new Decimal(nuevaCantidad),
+                        subtotal: new Decimal(nuevoSubtotal),
+                        precio_unitario: precioUnitario
+                    }
+                });
+
+                await this.actualizarTotalesVenta(ventaId, tx);
+
+                const unidad = producto.unidaddemedida || (producto.esgranel ? 'kg' : 'unidades');
+                return {
+                    mensaje: `Cantidad incrementada del producto "${producto.nombre}" (+${cantidad} ${unidad})`,
+                    detalle: this.formatearDetalleVenta(detalleActualizado, producto),
+                    accion: 'incrementado',
+                    resumen_venta: await this.obtenerResumenVenta(ventaId, tx)
+                };
+            } else {
+                const subtotal = cantidad * precioUnitario;
+
+                const nuevoDetalle = await tx.detallesventa.create({
+                    data: {
+                        Id_venta: ventaId,
+                        Id_producto: data.Id_producto,
+                        cantidad_recibida: new Decimal(cantidad),
+                        devuelto: new Decimal(0),
+                        subtotal: new Decimal(subtotal),
+                        precio_unitario: precioUnitario
+                    }
+                });
+
+                await this.actualizarTotalesVenta(ventaId, tx);
+
+                const unidad = producto.unidaddemedida || (producto.esgranel ? 'kg' : 'unidades');
+                return {
+                    mensaje: `Producto "${producto.nombre}" agregado (${cantidad} ${unidad})`,
+                    detalle: this.formatearDetalleVenta(nuevoDetalle, producto),
+                    accion: 'agregado',
+                    resumen_venta: await this.obtenerResumenVenta(ventaId, tx)
+                };
+            }
+        });
+    }
+
+    async modificarCantidadOEliminarProducto(ventaId: string, productoId: string, nuevaCantidad: number, Id_tienda: string) {
+        return this.prisma.$transaction(async (tx) => {
+            const venta = await this.validarVentaActiva(ventaId, Id_tienda);
+            const producto = await this.validarProductoParaVenta(productoId, Id_tienda);
+
+            const detalle = await tx.detallesventa.findFirst({
+                where: { Id_venta: ventaId, Id_producto: productoId }
+            });
+
+            if (!detalle) {
+                throw new NotFoundException('El producto no está en esta venta');
+            }
+
+            if (nuevaCantidad < 0) {
+                throw new BadRequestException('La cantidad debe ser mayor o igual a cero');
+            }
+
+            if (nuevaCantidad === 0) {
+                await tx.detallesventa.delete({ where: { Id: detalle.Id } });
+                await this.actualizarTotalesVenta(ventaId, tx);
+
+                return {
+                    mensaje: `Producto eliminado de la venta`,
+                    accion: 'eliminado',
+                    resumen_venta: await this.obtenerResumenVenta(ventaId, tx)
+                };
+            } else {
+                if (producto.stock! < nuevaCantidad) {
+                    throw new BadRequestException(
+                        `Stock insuficiente. Disponible: ${producto.stock}, requerido: ${nuevaCantidad}`
+                    );
+                }
+
+                const precioUnitario = Number(producto.precioventa ?? 0);
+
+                const nuevoSubtotal = nuevaCantidad * precioUnitario;
+
+                const detalleActualizado = await tx.detallesventa.update({
+                    where: { Id: detalle.Id },
+                    data: {
+                        cantidad_recibida: nuevaCantidad,
+                        subtotal: nuevoSubtotal,
+                        precio_unitario: precioUnitario
+                    }
+                });
+
+                await this.actualizarTotalesVenta(ventaId, tx);
+
+                return {
+                    mensaje: `Cantidad modificada (${nuevaCantidad}) para ${producto.nombre}`,
+                    accion: 'modificado',
+                    detalle: this.formatearDetalleVenta(detalleActualizado, producto),
+                    resumen_venta: await this.obtenerResumenVenta(ventaId, tx)
+                };
+            }
+        });
+    }
+
     async procesarPago(ventaId: string, datos: FinalizarVentaDto, Id_tienda: string) {
         return this.prisma.$transaction(async (tx) => {
             const venta = await tx.venta.findFirst({
-                where: {
-                    Id: ventaId,
-                    Id_tienda: Id_tienda
-                },
+                where: { Id: ventaId, Id_tienda: Id_tienda },
                 include: {
                     tienda: { select: { Id: true, nombre: true } },
-                    detallesventa: {
-                        include: {
-                            producto: true
-                        }
-                    }
+                    detallesventa: { include: { producto: true } }
                 }
             });
 
@@ -240,14 +412,12 @@ export class VentasService {
                 );
             }
 
-            // Calcular ganancia
             const gananciaTotal = venta.detallesventa.reduce((total, detalle) => {
                 const costo = Number(detalle.producto?.preciodeproveedor || 0) * Number(detalle.cantidad_recibida || 0);
                 const ventaTotal = Number(detalle.subtotal || 0);
                 return total + (ventaTotal - costo);
             }, 0);
 
-            // Finalizar venta
             const ventaFinalizada = await tx.venta.update({
                 where: { Id: ventaId },
                 data: {
@@ -257,7 +427,6 @@ export class VentasService {
                 }
             });
 
-            // Actualizar stock de productos
             for (const detalle of venta.detallesventa) {
                 await tx.producto.update({
                     where: { Id: detalle.Id_producto! },
@@ -290,10 +459,7 @@ export class VentasService {
     async cancelarVenta(ventaId: string, Id_tienda: string) {
         return this.prisma.$transaction(async (tx) => {
             const venta = await tx.venta.findFirst({
-                where: {
-                    Id: ventaId,
-                    Id_tienda: Id_tienda
-                },
+                where: { Id: ventaId, Id_tienda: Id_tienda },
                 include: {
                     tienda: { select: { Id: true, nombre: true } },
                     detallesventa: true
@@ -322,16 +488,13 @@ export class VentasService {
             };
         });
     }
-    // Métodos auxiliares privados
+
+    // PRIVADOS
+
     private async validarVentaActiva(ventaId: string, Id_tienda: string) {
         const venta = await this.prisma.venta.findFirst({
-            where: {
-                Id: ventaId,
-                Id_tienda: Id_tienda
-            },
-            include: {
-                tienda: { select: { Id: true, nombre: true } }
-            }
+            where: { Id: ventaId, Id_tienda: Id_tienda },
+            include: { tienda: { select: { Id: true, nombre: true } } }
         });
 
         if (!venta) {
@@ -388,12 +551,11 @@ export class VentasService {
                 es_granel: p.esgranel,
                 unidad_medida: p.unidaddemedida,
                 precio_venta: p.precioventa,
-                precio_kilo: p.preciokilo,
                 tipo_producto: p.esgranel ? 'granel' : 'normal',
-                precio_mostrar: p.esgranel ? p.preciokilo : p.precioventa,
+                precio_mostrar: p.precioventa,
                 requiere_cantidad: p.esgranel,
                 instrucciones: p.esgranel
-                    ? `Especificar cantidad en ${p.unidaddemedida}`
+                    ? `Especificar cantidad en ${p.unidaddemedida || 'kg'}`
                     : 'Se agrega 1 unidad automáticamente (o especificar cantidad)'
             })),
             total_disponibles: productos.length,
@@ -408,9 +570,9 @@ export class VentasService {
             id: detalle.Id,
             producto_id: producto.Id,
             producto_nombre: producto.nombre,
-            cantidad: detalle.cantidad_recibida,
+            cantidad: Number(detalle.cantidad_recibida || 0),
             unidad: producto.unidaddemedida || (producto.esgranel ? 'kg' : 'unidades'),
-            precio_unitario: producto.esgranel ? producto.preciokilo : producto.precioventa,
+            precio_unitario: Number(producto.precioventa ?? 0),
             subtotal: Number(detalle.subtotal || 0),
             tipo: producto.esgranel ? 'granel' : 'normal'
         };
@@ -444,103 +606,63 @@ export class VentasService {
         };
     }
 
-      // MÉTODO UNIFICADO: Agregar producto inteligente
-    async agregarProductoInteligente(ventaId: string, data: AgregarProductoVentaDto, Id_tienda: string) {
-        return this.prisma.$transaction(async (tx) => {
-            // Validar venta activa
-            const venta = await this.validarVentaActiva(ventaId, Id_tienda);
-
-            // Obtener y validar producto
-            const producto = await this.validarProductoParaVenta(data.Id_producto, Id_tienda);
-
-            // Validar stock no nulo y convertir a número
-            const stockActual = producto.stock ?? 0;
-
-            // Determinar cantidad según tipo de producto
-            let cantidad: number;
-            if (producto.esgranel) {
-                if (!data.cantidad || data.cantidad <= 0) {
-                    throw new BadRequestException(
-                        `El producto "${producto.nombre}" es a granel. Debe especificar la cantidad en ${producto.unidaddemedida || 'kg'}`
-                    );
+    async historialDetallesVenta(
+        Id_tienda: string,
+        opciones: { desde?: string, hasta?: string, pagina?: number, limite?: number, producto?: string }
+    ) {
+        const { desde, hasta, pagina = 1, limite = 20, producto } = opciones;
+        const where: any = {
+            venta: { Id_tienda }
+        };
+        if (desde) {
+            where.venta = { ...where.venta, fechaDeVenta: { gte: new Date(desde) } };
+        }
+        if (hasta) {
+            where.venta = {
+                ...where.venta,
+                fechaDeVenta: {
+                    ...(where.venta?.fechaDeVenta || {}),
+                    lte: new Date(hasta)
                 }
-                cantidad = data.cantidad;
-            } else {
-                cantidad = data.cantidad || 1;
-            }
-
-            // Validar stock suficiente
-            if (stockActual < cantidad) {
-                throw new BadRequestException(
-                    `Stock insuficiente. Disponible: ${stockActual} ${producto.unidaddemedida || 'unidades'}, Requerido: ${cantidad} ${producto.unidaddemedida || 'unidades'}`
-                );
-            }
-
-            // Verificar si ya existe en la venta
-            const detalleExistente = await tx.detallesventa.findFirst({
-                where: {
-                    Id_venta: ventaId,
-                    Id_producto: data.Id_producto
+            };
+        }
+        if (producto) {
+            where.producto = {
+                OR: [
+                    { nombre: { contains: producto } },
+                    { codigobarra: { contains: producto } }
+                ]
+            };
+        }
+        const [detalles, total] = await this.prisma.$transaction([
+            this.prisma.detallesventa.findMany({
+                where,
+                orderBy: [{ venta: { fechaDeVenta: 'desc' } }],
+                skip: (pagina - 1) * limite,
+                take: limite,
+                include: {
+                    producto: true,
+                    venta: true
                 }
-            });
-
-            const precioUnitario = producto.esgranel
-                ? Number(producto.preciokilo ?? 0)
-                : Number(producto.precioventa ?? 0);
-
-            if (detalleExistente) {
-                // Convertir cantidad_recibida a number (por si es Decimal o null)
-                const cantidadExistente = detalleExistente.cantidad_recibida ? Number(detalleExistente.cantidad_recibida) : 0;
-                const nuevaCantidad = cantidadExistente + cantidad;
-
-                // Validar que la nueva cantidad no exceda el stock
-                if (nuevaCantidad > stockActual) {
-                    throw new BadRequestException(
-                        `La cantidad total (${nuevaCantidad}) excedería el stock disponible (${stockActual})`
-                    );
-                }
-
-                const nuevoSubtotal = nuevaCantidad * precioUnitario;
-
-                const detalleActualizado = await tx.detallesventa.update({
-                    where: { Id: detalleExistente.Id },
-                    data: {
-                        cantidad_recibida: new Decimal(nuevaCantidad),
-                        subtotal: new Decimal(nuevoSubtotal)
-                    }
-                });
-
-                await this.actualizarTotalesVenta(ventaId, tx);
-
-                return {
-                    mensaje: `Cantidad incrementada del producto "${producto.nombre}" (+${cantidad} ${producto.unidaddemedida || 'unidades'})`,
-                    detalle: this.formatearDetalleVenta(detalleActualizado, producto),
-                    accion: 'incrementado',
-                    resumen_venta: await this.obtenerResumenVenta(ventaId, tx)
-                };
-            } else {
-                // Crear nuevo detalle
-                const subtotal = cantidad * precioUnitario;
-
-                const nuevoDetalle = await tx.detallesventa.create({
-                    data: {
-                        Id_venta: ventaId,
-                        Id_producto: data.Id_producto,
-                        cantidad_recibida: new Decimal(cantidad),
-                        devuelto: new Decimal(0),
-                        subtotal: new Decimal(subtotal)
-                    }
-                });
-
-                await this.actualizarTotalesVenta(ventaId, tx);
-
-                return {
-                    mensaje: `Producto "${producto.nombre}" agregado ${producto.esgranel ? `(${cantidad} ${producto.unidaddemedida})` : `(${cantidad} unidades)`}`,
-                    detalle: this.formatearDetalleVenta(nuevoDetalle, producto),
-                    accion: 'agregado',
-                    resumen_venta: await this.obtenerResumenVenta(ventaId, tx)
-                };
-            }
-        });
+            }),
+            this.prisma.detallesventa.count({ where })
+        ]);
+        return {
+            pagina,
+            limite,
+            total,
+            historial: detalles.map(d => ({
+                id_detalle: d.Id,
+                id_producto: d.Id_producto,
+                nombre_producto: d.producto?.nombre,
+                codigobarra: d.producto?.codigobarra,
+                cantidad: Number(d.cantidad_recibida || 0),
+                subtotal: Number(d.subtotal || 0),
+                precio_unitario: Number(d.producto?.precioventa ?? 0),
+                fecha_venta: d.venta?.fechaDeVenta,
+                id_venta: d.venta?.Id,
+                total_venta: Number(d.venta?.total_venta || 0)
+            }))
+        };
     }
 }

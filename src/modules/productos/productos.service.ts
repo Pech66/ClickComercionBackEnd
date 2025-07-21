@@ -21,7 +21,7 @@ export class ProductosService {
     private validacionService: ValidacionService
   ) { }
 
-  
+
   // Crear producto normal
   async normal(dto: DtoProductoNormal, file?: Express.Multer.File) {
     try {
@@ -101,7 +101,6 @@ export class ProductosService {
         }
       }
 
-      // Validar duplicidad por código de barras y almacén
       const productoExistente = await this.prisma.producto.findFirst({
         where: {
           codigobarra: dto.codigobarra,
@@ -115,7 +114,8 @@ export class ProductosService {
       this.validacionService.validateNombre(dto.nombre);
       this.validacionService.validateDescripcion(dto.descripcion);
       this.validacionService.validateCodigoBarra(dto.codigobarra);
-      this.validacionService.validatePrecio(dto.preciokilo);
+      this.validacionService.validatePrecio(dto.precioventa); // Cambia aquí
+
       if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== null) {
         this.validacionService.validatePrecio(dto.preciodeproveedor);
       }
@@ -125,13 +125,15 @@ export class ProductosService {
           nombre: dto.nombre,
           descripcion: dto.descripcion,
           codigobarra: dto.codigobarra,
-          preciokilo: dto.preciokilo,
+          precioventa: dto.precioventa, // Guardar aquí el precio por kilo/litro
           unidaddemedida: dto.unidaddemedida,
           preciodeproveedor: dto.preciodeproveedor,
           esgranel: true,
           fotoUrl,
           Id_almacen: dto.Id_almacen,
           Id_categoria: dto.Id_categoria && dto.Id_categoria.trim() !== "" ? dto.Id_categoria : null,
+          // No guardar en preciokilo
+          preciokilo: null
         },
       });
 
@@ -149,9 +151,7 @@ export class ProductosService {
     });
     if (!producto) throw new BadRequestException('El producto no existe.');
 
-    // Validar que el producto pertenezca a la tienda del usuario (multi-inquilino)
     if (!producto.almacen) throw new BadRequestException('El producto no tiene un almacén asignado.');
-    // El idTienda debe venir del controller y verificarse antes de llamar a este método
 
     const dataUpdate: any = {};
 
@@ -174,18 +174,11 @@ export class ProductosService {
     if (dto.nombre !== undefined && dto.nombre !== "") dataUpdate.nombre = dto.nombre;
     if (dto.descripcion !== undefined && dto.descripcion !== "") dataUpdate.descripcion = dto.descripcion;
     if (dto.codigobarra !== undefined && dto.codigobarra !== "") dataUpdate.codigobarra = dto.codigobarra;
-    if (isValidNumberField(dto.precioventa)) dataUpdate.precioventa = Number(dto.precioventa);
-    if (isValidNumberField(dto.preciodeproveedor)) dataUpdate.preciodeproveedor = Number(dto.preciodeproveedor);
-    if (isValidNumberField(dto.preciokilo)) dataUpdate.preciokilo = Number(dto.preciokilo);
-    // Validar y asignar solo si el valor es un número válido (no vacío, no undefined, no null, no NaN)
     if (dto.precioventa !== undefined && dto.precioventa !== null && !isNaN(Number(dto.precioventa))) {
       dataUpdate.precioventa = Number(dto.precioventa);
     }
     if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== null && !isNaN(Number(dto.preciodeproveedor))) {
       dataUpdate.preciodeproveedor = Number(dto.preciodeproveedor);
-    }
-    if (dto.preciokilo !== undefined && dto.preciokilo !== null && !isNaN(Number(dto.preciokilo))) {
-      dataUpdate.preciokilo = Number(dto.preciokilo);
     }
     if (dto.unidaddemedida !== undefined && dto.unidaddemedida !== "") dataUpdate.unidaddemedida = dto.unidaddemedida;
     if (dto.esgranel !== undefined) dataUpdate.esgranel = dto.esgranel;
@@ -194,17 +187,21 @@ export class ProductosService {
     // Reglas para alternar normal <-> granel
     if (dto.esgranel !== undefined && dto.esgranel !== producto.esgranel) {
       if (dto.esgranel) {
-        dataUpdate.precioventa = null;
+        // Ahora es granel: solo importa precioventa y unidaddemedida
+        dataUpdate.unidaddemedida = dto.unidaddemedida || null;
       } else {
-        dataUpdate.preciokilo = null;
+        // Ahora es normal: limpia unidaddemedida
         dataUpdate.unidaddemedida = null;
       }
     }
+
+    // Opcional: si quieres limpiar preciokilo SIEMPRE para mantener datos limpios
+    dataUpdate.preciokilo = null;
+
     return await this.prisma.producto.update({
       where: { Id: id },
       data: dataUpdate
     });
-
   }
 
   // Obtener producto por ID (ya cumple multi-inquilino)

@@ -5,6 +5,7 @@ import { Rol } from 'src/components/roles/roles.enum';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/components/roles/roles.guard';
 import { DetallesVentasService } from './detalles_ventas.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @ApiTags('HistorialVentas')
 @Controller('ventas-historial')
@@ -12,12 +13,25 @@ import { DetallesVentasService } from './detalles_ventas.service';
 @Roles(Rol.ADMIN_TIENDA)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class DetallesVentasController {
-    constructor(private readonly detallesVentasService: DetallesVentasService) {}
+    constructor(
+        private readonly detallesVentasService: DetallesVentasService,
+        private readonly prisma: PrismaService
+    ) {}
 
-    private obtenerTiendaId(req: any): string {
-        const tiendaId = req.user?.tiendaId || req.user?.Id_tienda;
-        if (!tiendaId) throw new BadRequestException('Usuario no tiene tienda asignada');
-        return tiendaId;
+    
+    private async obtenerTiendaId(req: any): Promise<string> {
+        const usuarioId = req.user?.Id || req.user?.id;
+        if (!usuarioId) throw new BadRequestException('No se pudo identificar al usuario autenticado.');
+
+        const usuario = await this.prisma.usuarios.findUnique({
+            where: { Id: usuarioId },
+            include: { tienda: true }
+        });
+
+        if (!usuario || !usuario.Id_tienda || !usuario.tienda) {
+            throw new BadRequestException('Debes crear una tienda primero.');
+        }
+        return usuario.Id_tienda;
     }
 
     @Get()
@@ -28,7 +42,7 @@ export class DetallesVentasController {
         @Query('page') page = 1,
         @Query('limit') limit = 10,
     ) {
-        const tiendaId = this.obtenerTiendaId(req);
+        const tiendaId = await this.obtenerTiendaId(req);
         return this.detallesVentasService.obtenerHistorialVentas(tiendaId, Number(page), Number(limit));
     }
 
@@ -39,7 +53,7 @@ export class DetallesVentasController {
         @Param('ventaId') ventaId: string,
         @Req() req: any,
     ) {
-        const tiendaId = this.obtenerTiendaId(req);
+        const tiendaId = await this.obtenerTiendaId(req);
         return this.detallesVentasService.obtenerDetalleVenta(ventaId, tiendaId);
     }
 }

@@ -1,3 +1,4 @@
+import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
@@ -16,8 +17,8 @@ export class DtoProductoGranel {
 
     @Type(() => Number)
     @IsNumber()
-    @IsNotEmpty()
-    preciokilo: number;
+    @ApiProperty({ example: 1200.50 })
+    precioventa: number; // Precio por kilo/litro
 
     @IsString()
     @IsNotEmpty()
@@ -30,7 +31,6 @@ export class DtoProductoGranel {
 
     @IsOptional()
     @IsString()
-    @IsNotEmpty()
     Id_almacen?: string;
 
     @IsOptional()

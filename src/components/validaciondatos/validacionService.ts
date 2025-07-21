@@ -56,9 +56,6 @@ export class ValidacionService {
         if (typeof nombreLimpio !== 'string' || nombreLimpio === '') {
             throw new Error('El nombre de usuario no es válido.');
         }
-        if (nombre.length < 3 || nombre.length > 5) {
-            throw new Error('El nombre de usuario debe tener entre 3 y 25 caracteres.');
-        }
         if (!nombreContexto.test(nombre)) {
             throw new Error('El nombre de usuario solo puede contener letras.');
         }

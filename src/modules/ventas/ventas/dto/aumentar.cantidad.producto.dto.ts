@@ -1,7 +1,9 @@
-    import { IsNumber, IsPositive } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class AumentarCantidadProductoDto {
-  @IsNumber()
-  @IsPositive()
-  cantidadAdicional: number; // cantidad a sumar (unidades o gramos/kilos)
+  @ApiProperty({
+    description: 'Cantidad a aumentar para el producto (mayor a 0)',
+    example: 3
+  })
+  cantidadAdicional: number;
 }

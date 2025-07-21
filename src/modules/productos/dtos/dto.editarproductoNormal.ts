@@ -17,7 +17,7 @@ export class DtoEditarProducto {
     @IsOptional()
     @Type(() => Number)
     @IsNumber()
-    precioventa?: number;
+    precioventa?: number; // Usar este campo para productos normales y granel
 
     @IsOptional()
     @Type(() => Number)
@@ -32,12 +32,6 @@ export class DtoEditarProducto {
     @IsString()
     foroUrl?: string;
 
-    //PARA PRODUCTOS GRANEL
-    @IsOptional()
-    @IsNumber()
-    @Type(() => Number)
-    preciokilo?: number;
-
     @IsOptional()
     @IsString()
     unidaddemedida?: string;
@@ -50,8 +44,4 @@ export class DtoEditarProducto {
     @IsOptional()
     @IsString()
     FotoUrl?: string;
-
-
-   
 }
-

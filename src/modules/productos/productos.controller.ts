@@ -106,7 +106,8 @@ export class ProductosController {
         nombre: { type: 'string', example: 'Azúcar' },
         descripcion: { type: 'string', example: 'Azúcar a granel, excelente calidad' },
         codigobarra: { type: 'string', example: 'COD12345' },
-        preciokilo: { type: 'number', example: 35.00 },
+        precioventa: { type: 'number', example: 1200.50 },
+
         unidaddemedida: { type: 'string', example: 'kg' },
         preciodeproveedor: { type: 'number', example: 32.00, nullable: true },
         esgranel: { type: 'boolean', example: true, default: true },
@@ -204,12 +205,7 @@ export class ProductosController {
         },
 
         // Campos para productos a granel
-        preciokilo: {
-          type: 'number',
-          example: 35.00,
-          nullable: true,
-          description: 'Precio por kilo (solo para productos a granel)'
-        },
+
         unidaddemedida: {
           type: 'string',
           example: 'kg',

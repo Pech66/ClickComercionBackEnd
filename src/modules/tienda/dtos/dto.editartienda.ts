@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class DtoEditarTienda {
 
@@ -17,11 +17,13 @@ export class DtoEditarTienda {
   @IsOptional()
   ubicacion?: string;
 
-  
+
   @ApiProperty({
     description: 'Número de teléfono de la tienda',
   })
   @IsNumber()
+  @Min(1000000000)
+  @Max(9999999999)
   @IsOptional()
   telefono?: string;
 
