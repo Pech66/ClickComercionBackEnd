@@ -14,11 +14,15 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { DtoCrearAlmacen } from './dtos/dtos.crearalmacen';
 import { PerfilService } from '../perfil/perfil.service';
+import { RolesGuard } from 'src/components/roles/roles.guard';
+import { Roles } from 'src/components/roles/roles.decorator';
+import { Rol } from 'src/components/roles/roles.enum';
 
 @ApiTags('Almacen')
 @Controller('almacen')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@Roles(Rol.ADMIN_TIENDA)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class AlmacenController {
   constructor(
     private readonly almacenService: AlmacenService,
