@@ -119,9 +119,51 @@ export class PerfilService {
     };
   }
 
-  async buscarPorId(id: string) {
-    return this.prisma.usuarios.findUnique({
+  
+   async buscarPorId(id: string) {
+    return await this.prisma.usuarios.findUnique({
       where: { Id: id },
+      select: {
+        Id: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        activo: true,
+        Id_tienda: true,
+        tienda: true,
+      },
+    });
+  }
+
+  // (opcional) Buscar usuario por email
+  async buscarPorEmail(email: string) {
+    return await this.prisma.usuarios.findUnique({
+      where: { email },
+      select: {
+        Id: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        activo: true,
+        Id_tienda: true,
+        tienda: true,
+      },
+    });
+  }
+
+  // (opcional) Vincular usuario con tienda
+  async asignarTiendaAUsuario(idUsuario: string, idTienda: string) {
+    return await this.prisma.usuarios.update({
+      where: { Id: idUsuario },
+      data: { Id_tienda: idTienda },
+    });
+  }
+
+  // (opcional) Cambiar rol de usuario
+  async cambiarRol(idUsuario: string, rol: 'SUPERADMIN' | 'ADMIN_TIENDA' | 'TRABAJADOR') {
+    return await this.prisma.usuarios.update({
+      where: { Id: idUsuario },
+      data: { rol },
     });
   }
 
