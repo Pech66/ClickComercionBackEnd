@@ -84,9 +84,7 @@ export class CategoriaService {
       if (!idCategoria || idCategoria.trim() === '') {
         throw new BadRequestException('ID de categoría es requerido');
       }
-      if (dtoEditarCategoria.nombre) {
-        this.validacionService.validateNombre(dtoEditarCategoria.nombre);
-      }
+      
       if (dtoEditarCategoria.descripcion) {
         this.validacionService.validateDescripcion(dtoEditarCategoria.descripcion);
       }
