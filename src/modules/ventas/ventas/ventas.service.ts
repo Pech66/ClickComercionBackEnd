@@ -15,7 +15,7 @@ export interface ServiceResponse<T = any> {
 
 @Injectable()
 export class VentasService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async iniciarVenta(Id_tienda: string): Promise<ServiceResponse> {
     try {
@@ -233,14 +233,37 @@ export class VentasService {
         };
       }
 
+      // Aquí la validación extra para tipo de producto
+      if (producto.data.esGranel) {
+        // Granel: cantidad puede ser decimal (mayor a 0)
+        if (isNaN(cantidadAdicional) || cantidadAdicional <= 0) {
+          return {
+            status: 'warning',
+            code: 'CANTIDAD_INVALIDA',
+            mensaje: 'Para productos a granel la cantidad debe ser un número decimal mayor a 0.',
+            data: null
+          };
+        }
+      } else {
+        // No granel: solo enteros
+        if (!Number.isInteger(cantidadAdicional) || cantidadAdicional <= 0) {
+          return {
+            status: 'warning',
+            code: 'CANTIDAD_INVALIDA',
+            mensaje: 'Solo puedes vender cantidades enteras para este producto.',
+            data: null
+          };
+        }
+      }
+
       const nuevaCantidad = Number(detalle.cantidad_recibida || 0) + cantidadAdicional;
       const stockDisponible = Number(producto.data.stock ?? 0);
 
-      if (stockDisponible < Math.ceil(nuevaCantidad)) {
+      if (nuevaCantidad > stockDisponible) {
         return {
           status: 'warning',
           code: 'STOCK_INSUFICIENTE',
-          mensaje: `No hay suficiente stock. Disponible: ${stockDisponible}, Necesario: ${Math.ceil(nuevaCantidad)}.`,
+          mensaje: `No hay suficiente stock. Disponible: ${stockDisponible}, Necesario: ${nuevaCantidad}.`,
           data: null
         };
       }
@@ -252,7 +275,7 @@ export class VentasService {
         where: { Id: detalle.Id },
         data: {
           cantidad_recibida: nuevaCantidad,
-          subtotal: new Decimal(nuevoSubtotal),
+          subtotal: nuevoSubtotal,
           precio_unitario: precioUnitario
         }
       });
@@ -427,6 +450,30 @@ export class VentasService {
           data: null
         };
       }
+
+      // === Validación tipo de producto ===
+      if (producto.data.esGranel) {
+        // Granel: permitir decimales > 0 (o 0 para eliminar)
+        if (isNaN(nuevaCantidad) || nuevaCantidad < 0) {
+          return {
+            status: 'warning',
+            code: 'CANTIDAD_INVALIDA',
+            mensaje: 'Para productos a granel la cantidad debe ser un número decimal mayor o igual a 0.',
+            data: null
+          };
+        }
+      } else {
+        // Normal: solo enteros >= 0
+        if (!Number.isInteger(nuevaCantidad) || nuevaCantidad < 0) {
+          return {
+            status: 'warning',
+            code: 'CANTIDAD_INVALIDA',
+            mensaje: 'Solo puedes vender cantidades enteras para este producto.',
+            data: null
+          };
+        }
+      }
+      // === Fin validación tipo de producto ===
 
       if (nuevaCantidad === 0) {
         await tx.detallesventa.delete({ where: { Id: detalle.Id } });

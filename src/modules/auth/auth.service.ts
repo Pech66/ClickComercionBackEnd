@@ -260,4 +260,10 @@ export class AuthService {
         });
     }
 
+
+    async solicitarReenvioActivacion(email: string): Promise<ServiceResponse> {
+        return this.verificationService.solicitarReenvio(email);
+    }
+
+
 }

@@ -8,7 +8,6 @@ import { RolesGuard } from 'src/components/roles/roles.guard';
 import { AgregarProductoVentaDto } from './dto/agregar.producto.venta.dto';
 import { AumentarCantidadProductoDto } from './dto/aumentar.cantidad.producto.dto';
 import { FinalizarVentaDto } from './dto/finalizar.venta.dto';
-import { HistorialDetallesVentaDto } from './dto/historial_detalles_venta.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @ApiTags('Ventas')
