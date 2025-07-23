@@ -178,17 +178,5 @@ export class AuthController {
   }
 
 
-  @Post('reenviar-codigo')
-  @ApiOperation({ summary: 'Reenviar código de verificación (limitado)' })
-  async reenviarCodigo(@Body() dtoreenvio: DtoReenvio) {
-    try {
-      const result = await this.authService.solicitarReenvioActivacion(dtoreenvio.email);
-      if (result.status === 'success') {
-        return { message: 'Código reenviado exitosamente' };
-      }
-      throw new ConflictException(result.mensaje);
-    } catch (error) {
-      throw new ConflictException(error.message || 'Error al reenviar el código');
-    }
-  }
+ 
 }  

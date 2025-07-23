@@ -7,6 +7,7 @@ import { DtoVerificacion } from "./dtos/dto.verificacion";
 import { DtoLoginUsuario } from "./dtos/dto.login.usuario";
 import { VerificationService } from "src/service/mailer/verification.service";
 import { ValidacionService } from "src/components/validaciondatos/validacionService";
+import { ServiceResponse } from "../ventas/ventas/ventas.service";
 
 
 
@@ -176,8 +177,8 @@ export class AuthService {
         }
     }
 
-    async reenviarCodigo(email: string): Promise<void> {
-        return await this.verificationService.reenviarCodigo(email);
+    async reenviarCodigo(email: string): Promise<ServiceResponse> {
+        return this.verificationService.reenviarCodigo(email);
     }
 
     async logout(usuarioId: string) {
@@ -259,11 +260,7 @@ export class AuthService {
             data: { Id_tienda: tiendaId },
         });
     }
-
-
-    async solicitarReenvioActivacion(email: string): Promise<ServiceResponse> {
-        return this.verificationService.solicitarReenvio(email);
-    }
+   
 
 
 }
