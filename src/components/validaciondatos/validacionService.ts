@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 
 
 @Injectable()
-export class    ValidacionService {
+export class  ValidacionService {
 
     //Metodo para valida la contraseña
     validatePassword(contrasena: string): boolean {
@@ -100,9 +100,7 @@ export class    ValidacionService {
         if (typeof nombre !== 'string' || nombre.trim() === '') {
             throw new Error('El nombre no es válido.');
         }
-        if (nombre.length < 3 || nombre.length > 35) {
-            throw new Error('El nombre debe tener entre 3 min y 35 max.');
-        }
+        
         return true;
     }
 

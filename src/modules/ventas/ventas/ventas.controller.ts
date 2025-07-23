@@ -54,26 +54,7 @@ export class VentasController {
         return this.ventasService.iniciarVenta(usuario.Id_tienda);
     }
 
-    // --------- 2A. Buscar productos por nombre/categoría (para búsquedas manuales) ---------
-    @Get(':ventaId/buscar-productos')
-    @ApiOperation({ summary: 'Buscar productos disponibles para agregar a la venta' })
-    async buscarProductosEnVenta(
-        @Param('ventaId') ventaId: string,
-        @Query('query') query?: string,
-        @Query('categoria') categoria?: string,
-        @Req() req?: any
-    ) {
-        const tiendaId = await this.obtenerTiendaId(req);
-        if (!query && !categoria) {
-            throw new BadRequestException({
-                mensaje: 'Debes proporcionar al menos uno de estos filtros: query (nombre/código de barras) o categoria.',
-                parametros_recibidos: { ventaId, query, categoria },
-                parametros_requeridos: ['ventaId (obligatorio)', 'query (opcional)', 'categoria (opcional)'],
-                ejemplo: { ventaId: 'id_venta', query: '31668462986', categoria: 'lacteos' }
-            });
-        }
-        return this.ventasService.buscarProductosDisponibles(ventaId, tiendaId, query, categoria);
-    }
+    
 
     // --------- 2B. Buscar producto por código de barras (¡para escáner!) ---------
     @Get(':ventaId/buscar-producto-codigo')
@@ -217,19 +198,6 @@ export class VentasController {
         return this.ventasService.cancelarVenta(ventaId, tiendaId);
     }
 
-    // --------- 8. Historial de ventas ---------
-    @Get('historial')
-    @ApiOperation({ summary: 'Historial de productos vendidos de mi tienda (paginado y por fecha)' })
-    async historialVentas(
-        @Req() req: any,
-        @Query('desde') desde?: string,
-        @Query('hasta') hasta?: string,
-        @Query('pagina') pagina: number = 1,
-        @Query('limite') limite: number = 20,
-        @Query('producto') producto?: string,
-    ) {
-        const tiendaId = await this.obtenerTiendaId(req);
-        return this.ventasService.historialDetallesVenta(tiendaId, { desde, hasta, pagina, limite, producto });
-    }
+    
 }
 
