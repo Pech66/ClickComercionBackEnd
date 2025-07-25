@@ -106,9 +106,13 @@ export class  ValidacionService {
 
     validateDescripcion(descripcion: string): boolean {
 
-        if (descripcion.length < 10 || descripcion.length > 200) {
-            throw new Error('La descripción debe tener entre 10 min y 200 max.');
+        const descripcionContexto = /^[a-zA-Z0-9\s.,;:!?-]+$/;
+        if (typeof descripcion !== 'string') {
+            throw new Error('La descripción no es válida.');
         }
+        if (!descripcionContexto.test(descripcion)) {
+            throw new Error('La descripción solo puede contener letras, números y algunos caracteres especiales como .,;:!?-');
+        }   
         return true;
     }
 

@@ -234,7 +234,6 @@ export class ProductosService {
         fotoUrl: producto.fotoUrl,
         precioventa: producto.precioventa,
         preciodeproveedor: producto.preciodeproveedor,
-        preciokilo: producto.preciokilo,
         unidaddemedida: producto.unidaddemedida,
         esgranel: producto.esgranel,
         categoria: producto.categoria ? {
