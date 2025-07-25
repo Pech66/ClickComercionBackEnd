@@ -105,7 +105,7 @@ export class ProductosService {
 
       // Limpia codigobarra vacío
       if (!dto.codigobarra || dto.codigobarra.trim() === '') {
-        dto.codigobarra = null;
+        dto.codigobarra = undefined;
       }
 
       // Validar duplicidad solo si hay codigobarra
