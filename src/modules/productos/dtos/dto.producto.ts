@@ -11,11 +11,13 @@ export class DtoProductoNormal {
     @IsString()
     @IsNotEmpty()
     @ApiProperty({ example: 'Laptop Dell XPS 13 con procesador Intel i7, 16GB RAM, 512GB SSD' })
+    @IsOptional()
     descripcion: string;
 
     @IsString()
     @IsNotEmpty()
     @ApiProperty({ example: 'D4GH5J6K7L8M9N0' })
+    @IsOptional()
     codigobarra: string;
 
     @Type(() => Number)

@@ -13,6 +13,7 @@ export class DtoProductoGranel {
 
     @IsString()
     @IsNotEmpty()
+    @IsOptional()
     codigobarra: string;
 
     @Type(() => Number)

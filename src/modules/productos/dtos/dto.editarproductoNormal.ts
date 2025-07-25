@@ -8,10 +8,12 @@ export class DtoEditarProducto {
 
     @IsOptional()
     @IsString()
+    @IsOptional()
     descripcion?: string;
 
     @IsOptional()
     @IsString()
+    @IsOptional()
     codigobarra?: string;
 
     @IsOptional()
