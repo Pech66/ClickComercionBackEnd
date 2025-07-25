@@ -44,7 +44,6 @@ export class ProductosController {
     return user.Id_tienda;
   }
 
-
   @Post('normal')
   @ApiOperation({ summary: 'Crear un producto normal' })
   @ApiConsumes('multipart/form-data')
@@ -53,8 +52,8 @@ export class ProductosController {
       type: 'object',
       properties: {
         nombre: { type: 'string', example: 'Laptop Dell XPS 13' },
-        descripcion: { type: 'string', example: 'Laptop Dell XPS 13 con Intel i7...' },
-        codigobarra: { type: 'string', example: 'D4GH5J6K7L8M9N0' },
+        descripcion: { type: 'string', example: 'Laptop Dell XPS 13 con Intel i7...', nullable: true },
+        codigobarra: { type: 'string', example: 'D4GH5J6K7L8M9N0', nullable: true },
         precioventa: { type: 'number', example: 1200.50 },
         preciodeproveedor: { type: 'number', example: 1000.00, nullable: true },
         Id_categoria: { type: 'string', example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd', nullable: true, description: 'ID de la categoría (opcional)' },
@@ -62,6 +61,7 @@ export class ProductosController {
           type: 'string',
           format: 'binary',
           description: 'Archivo de imagen del producto',
+          nullable: true,
         }
       }
     }
@@ -73,8 +73,14 @@ export class ProductosController {
     @UsuarioActual() usuario,
   ) {
     try {
-      this.validacionService.validateDescripcion(dtoproductonormal.descripcion);
+      // Validar nombre obligatorio
       this.validacionService.validateNombre(dtoproductonormal.nombre);
+
+      // Validar descripcion y codigobarra sólo si vienen
+      if (dtoproductonormal.descripcion)
+        this.validacionService.validateDescripcion(dtoproductonormal.descripcion);
+      if (dtoproductonormal.codigobarra)
+        this.validacionService.validateCodigoBarra(dtoproductonormal.codigobarra);
 
       const Id_tienda = await this.obtenerIdTienda(usuario.id);
 
@@ -89,7 +95,6 @@ export class ProductosController {
         throw new BadRequestException('No hay almacén registrado para tu tienda.');
       }
       dtoproductonormal.Id_almacen = almacen.Id;
-      console.log('DTO recibido:', dtoproductonormal);
       return await this.productoService.normal(dtoproductonormal, file);
     } catch (error) {
       throw new BadRequestException(error.message || 'Error al crear el producto normal.');
@@ -104,10 +109,9 @@ export class ProductosController {
       type: 'object',
       properties: {
         nombre: { type: 'string', example: 'Azúcar' },
-        descripcion: { type: 'string', example: 'Azúcar a granel, excelente calidad' },
-        codigobarra: { type: 'string', example: 'COD12345' },
+        descripcion: { type: 'string', example: 'Azúcar a granel, excelente calidad', nullable: true },
+        codigobarra: { type: 'string', example: 'COD12345', nullable: true },
         precioventa: { type: 'number', example: 1200.50 },
-
         unidaddemedida: { type: 'string', example: 'kg' },
         preciodeproveedor: { type: 'number', example: 32.00, nullable: true },
         esgranel: { type: 'boolean', example: true, default: true },
@@ -116,6 +120,7 @@ export class ProductosController {
           type: 'string',
           format: 'binary',
           description: 'Archivo de imagen del producto',
+          nullable: true,
         }
       }
     }
@@ -127,8 +132,14 @@ export class ProductosController {
     @UsuarioActual() usuario,
   ) {
     try {
-      this.validacionService.validateDescripcion(dtoproductogranel.descripcion);
+      // Validar nombre obligatorio
       this.validacionService.validateNombre(dtoproductogranel.nombre);
+
+      // Validar descripcion y codigobarra sólo si vienen
+      if (dtoproductogranel.descripcion)
+        this.validacionService.validateDescripcion(dtoproductogranel.descripcion);
+      if (dtoproductogranel.codigobarra)
+        this.validacionService.validateCodigoBarra(dtoproductogranel.codigobarra);
 
       if (file) {
         this.validacionService.validateImageFormatoTamaño(file);
@@ -152,8 +163,6 @@ export class ProductosController {
     }
   }
 
-
-
   @Put('editar/:idProducto')
   @ApiOperation({ summary: 'Editar un producto' })
   @ApiConsumes('multipart/form-data')
@@ -166,60 +175,14 @@ export class ProductosController {
     schema: {
       type: 'object',
       properties: {
-        // Campos básicos del producto
-        nombre: {
-          type: 'string',
-          example: 'Laptop Dell XPS 13',
-          nullable: true,
-          description: 'Nombre del producto'
-        },
-        descripcion: {
-          type: 'string',
-          example: 'Laptop Dell XPS 13 con Intel i7...',
-          nullable: true,
-          description: 'Descripción del producto'
-        },
-        codigobarra: {
-          type: 'string',
-          example: 'D4GH5J6K7L8M9N0',
-          nullable: true,
-          description: 'Código de barras del producto'
-        },
-        precioventa: {
-          type: 'number',
-          example: 1200.50,
-          nullable: true,
-          description: 'Precio de venta'
-        },
-        preciodeproveedor: {
-          type: 'number',
-          example: 1000.00,
-          nullable: true,
-          description: 'Precio del proveedor'
-        },
-        Id_categoria: {
-          type: 'string',
-          example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd',
-          nullable: true,
-          description: 'ID de la categoría (opcional)'
-        },
-
-        // Campos para productos a granel
-
-        unidaddemedida: {
-          type: 'string',
-          example: 'kg',
-          nullable: true,
-          description: 'Unidad de medida (kg, gramos, litros, etc.)'
-        },
-
-        // Imagen del producto
-        foto: {
-          type: 'string',
-          format: 'binary',
-          description: 'Archivo de imagen del producto',
-          nullable: true,
-        }
+        nombre: { type: 'string', example: 'Laptop Dell XPS 13', nullable: true, description: 'Nombre del producto' },
+        descripcion: { type: 'string', example: 'Laptop Dell XPS 13 con Intel i7...', nullable: true, description: 'Descripción del producto' },
+        codigobarra: { type: 'string', example: 'D4GH5J6K7L8M9N0', nullable: true, description: 'Código de barras del producto' },
+        precioventa: { type: 'number', example: 1200.50, nullable: true, description: 'Precio de venta' },
+        preciodeproveedor: { type: 'number', example: 1000.00, nullable: true, description: 'Precio del proveedor' },
+        Id_categoria: { type: 'string', example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd', nullable: true, description: 'ID de la categoría (opcional)' },
+        unidaddemedida: { type: 'string', example: 'kg', nullable: true, description: 'Unidad de medida (kg, gramos, litros, etc.)' },
+        foto: { type: 'string', format: 'binary', description: 'Archivo de imagen del producto', nullable: true }
       }
     }
   })
@@ -255,6 +218,16 @@ export class ProductosController {
           throw new BadRequestException('Error al subir la imagen');
         }
       }
+
+      // Validar nombre si viene
+      if (dtoEditarProducto.nombre)
+        this.validacionService.validateNombre(dtoEditarProducto.nombre);
+      // Validar descripcion si viene
+      if (dtoEditarProducto.descripcion)
+        this.validacionService.validateDescripcion(dtoEditarProducto.descripcion);
+      // Validar codigobarra si viene
+      if (dtoEditarProducto.codigobarra)
+        this.validacionService.validateCodigoBarra(dtoEditarProducto.codigobarra);
 
       return this.productoService.editarProducto(idProducto, dtoEditarProducto, fotoUrl ?? undefined);
     } catch (error) {

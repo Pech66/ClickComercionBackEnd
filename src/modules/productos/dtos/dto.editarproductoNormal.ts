@@ -2,48 +2,46 @@ import { IsOptional, IsString, IsNumber, IsBoolean } from "class-validator";
 import { Type } from "class-transformer";
 
 export class DtoEditarProducto {
-    @IsOptional()
-    @IsString()
-    nombre?: string;
+  @IsOptional()
+  @IsString()
+  nombre?: string;
 
-    @IsOptional()
-    @IsString()
-    @IsOptional()
-    descripcion?: string;
+  @IsOptional()
+  @IsString()
+  descripcion?: string;
 
-    @IsOptional()
-    @IsString()
-    @IsOptional()
-    codigobarra?: string;
+  @IsOptional()
+  @IsString()
+  codigobarra?: string | null | undefined;
 
-    @IsOptional()
-    @Type(() => Number)
-    @IsNumber()
-    precioventa?: number; // Usar este campo para productos normales y granel
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  precioventa?: number;
 
-    @IsOptional()
-    @Type(() => Number)
-    @IsNumber()
-    preciodeproveedor?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  preciodeproveedor?: number;
 
-    @IsOptional()
-    @IsString()
-    Id_categoria?: string;
+  @IsOptional()
+  @IsString()
+  Id_categoria?: string;
 
-    @IsOptional()
-    @IsString()
-    foroUrl?: string;
+  @IsOptional()
+  @IsString()
+  foroUrl?: string;
 
-    @IsOptional()
-    @IsString()
-    unidaddemedida?: string;
+  @IsOptional()
+  @IsString()
+  unidaddemedida?: string;
 
-    @IsOptional()
-    @Type(() => Boolean)
-    @IsBoolean()
-    esgranel?: boolean;
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  esgranel?: boolean;
 
-    @IsOptional()
-    @IsString()
-    FotoUrl?: string;
+  @IsOptional()
+  @IsString()
+  FotoUrl?: string;
 }

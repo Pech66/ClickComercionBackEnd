@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 
 
 @Injectable()
-export class  ValidacionService {
+export class ValidacionService {
 
     //Metodo para valida la contraseña
     validatePassword(contrasena: string): boolean {
@@ -100,19 +100,30 @@ export class  ValidacionService {
         if (typeof nombre !== 'string' || nombre.trim() === '') {
             throw new Error('El nombre no es válido.');
         }
-        
+
         return true;
     }
 
-    validateDescripcion(descripcion: string): boolean {
-
-        const descripcionContexto = /^[a-zA-Z0-9\s.,;:!?-]+$/;
-        if (typeof descripcion !== 'string') {
-            throw new Error('La descripción no es válida.');
+    validateDescripcion(descripcion?: string): boolean {
+        if (descripcion === undefined || descripcion === null || descripcion.trim() === '') {
+            return true;
         }
+        const descripcionContexto = /^[a-zA-Z0-9\s.,;:!?-]+$/;
         if (!descripcionContexto.test(descripcion)) {
             throw new Error('La descripción solo puede contener letras, números y algunos caracteres especiales como .,;:!?-');
-        }   
+        }
+        return true;
+    }
+
+    validateCodigoBarra(codigoBarra?: string): boolean {
+        if (codigoBarra === undefined || codigoBarra === null || codigoBarra.trim() === '') {
+            return true;
+        }
+        const codigoBarraContexto = /^[0-9A-Za-z]+$/;
+        // Si quieres validar longitud, agrega aquí
+        if (!codigoBarraContexto.test(codigoBarra)) {
+            throw new Error('El código de barras solo puede contener números y letras.');
+        }
         return true;
     }
 
@@ -127,13 +138,6 @@ export class  ValidacionService {
         return true;
     }
 
-    validateCodigoBarra(codigoBarra: string): boolean {
-        const codigoBarraContexto = /^[0-9A-Za-z]$/; // 12 o 13 dígitos
-        if (typeof codigoBarra !== 'string' || codigoBarra.trim() === '') {
-            throw new Error('El código de barras no es válido.');
-        }
 
-        return true;
-    }
 
 }

@@ -1,49 +1,45 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class DtoProductoGranel {
-    @IsString()
-    @IsNotEmpty()
-    nombre: string;
+  @IsString()
+  nombre: string;
 
-    @IsString()
-    @IsNotEmpty()
-    descripcion: string;
+  @IsString()
+  @IsOptional()
+  descripcion?: string;
 
-    @IsString()
-    @IsNotEmpty()
-    @IsOptional()
-    codigobarra: string;
+  @IsString()
+  @IsOptional()
+  codigobarra?: string | null | undefined;
 
-    @Type(() => Number)
-    @IsNumber()
-    @ApiProperty({ example: 1200.50 })
-    precioventa: number; // Precio por kilo/litro
+  @Type(() => Number)
+  @IsNumber()
+  @ApiProperty({ example: 1200.50 })
+  precioventa: number;
 
-    @IsString()
-    @IsNotEmpty()
-    unidaddemedida: string;
+  @IsString()
+  unidaddemedida: string;
 
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    esgranel: true;
+  @IsBoolean()
+  @Type(() => Boolean)
+  esgranel: true;
 
-    @IsOptional()
-    @IsString()
-    Id_almacen?: string;
+  @IsOptional()
+  @IsString()
+  Id_almacen?: string;
 
-    @IsOptional()
-    @IsString()
-    Id_categoria?: string;
+  @IsOptional()
+  @IsString()
+  Id_categoria?: string;
 
-    @IsOptional()
-    @IsString()
-    fotoUrl?: string;
+  @IsOptional()
+  @IsString()
+  fotoUrl?: string;
 
-    @IsOptional()
-    @Type(() => Number)
-    @IsNumber()
-    preciodeproveedor?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  preciodeproveedor?: number;
 }

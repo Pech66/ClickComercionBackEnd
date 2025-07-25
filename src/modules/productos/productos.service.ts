@@ -22,11 +22,9 @@ export class ProductosService {
   ) { }
 
 
-  // Crear producto normal
   async normal(dto: DtoProductoNormal, file?: Express.Multer.File) {
     try {
       let fotoUrl: string | undefined;
-
       if (file) {
         this.validacionService.validateImageFormatoTamaño(file);
         const resultado = await this.cloudinaryService.uploadFile(file);
@@ -42,20 +40,26 @@ export class ProductosService {
         }
       }
 
-      // Validar duplicidad por código de barras y almacén
-      const productoExistente = await this.prisma.producto.findFirst({
-        where: {
-          codigobarra: dto.codigobarra,
-          Id_almacen: dto.Id_almacen,
+      // Limpia codigobarra vacío
+      if (!dto.codigobarra || dto.codigobarra.trim() === '') {
+        dto.codigobarra = undefined;
+      }
+
+      // Validar duplicidad solo si hay codigobarra
+      if (dto.codigobarra) {
+        const productoExistente = await this.prisma.producto.findFirst({
+          where: {
+            codigobarra: dto.codigobarra,
+            Id_almacen: dto.Id_almacen,
+          }
+        });
+        if (productoExistente) {
+          throw new BadRequestException('El producto ya está registrado en este almacén.');
         }
-      });
-      if (productoExistente) {
-        throw new BadRequestException('El producto ya está registrado en este almacén.');
       }
 
       this.validacionService.validateNombre(dto.nombre);
       this.validacionService.validateDescripcion(dto.descripcion);
-      this.validacionService.validateCodigoBarra(dto.codigobarra);
       this.validacionService.validatePrecio(dto.precioventa);
       if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== null) {
         this.validacionService.validatePrecio(dto.preciodeproveedor);
@@ -65,7 +69,7 @@ export class ProductosService {
         data: {
           nombre: dto.nombre,
           descripcion: dto.descripcion,
-          codigobarra: dto.codigobarra,
+          codigobarra: dto.codigobarra, // Será null si venía vacío
           precioventa: dto.precioventa,
           preciodeproveedor: dto.preciodeproveedor,
           esgranel: false,
@@ -73,7 +77,6 @@ export class ProductosService {
           Id_almacen: dto.Id_almacen,
           Id_categoria: dto.Id_categoria && dto.Id_categoria.trim() !== "" ? dto.Id_categoria : null,
         },
-
       });
       console.log('Producto creado:', productoCreado);
       return productoCreado;
@@ -82,7 +85,6 @@ export class ProductosService {
     }
   }
 
-  // Crear producto granel
   async granel(dto: DtoProductoGranel, file?: Express.Multer.File) {
     try {
       let fotoUrl: string | undefined;
@@ -101,20 +103,27 @@ export class ProductosService {
         }
       }
 
-      const productoExistente = await this.prisma.producto.findFirst({
-        where: {
-          codigobarra: dto.codigobarra,
-          Id_almacen: dto.Id_almacen,
+      // Limpia codigobarra vacío
+      if (!dto.codigobarra || dto.codigobarra.trim() === '') {
+        dto.codigobarra = null;
+      }
+
+      // Validar duplicidad solo si hay codigobarra
+      if (dto.codigobarra) {
+        const productoExistente = await this.prisma.producto.findFirst({
+          where: {
+            codigobarra: dto.codigobarra,
+            Id_almacen: dto.Id_almacen,
+          }
+        });
+        if (productoExistente) {
+          throw new BadRequestException('El producto ya está registrado en este almacén.');
         }
-      });
-      if (productoExistente) {
-        throw new BadRequestException('El producto ya está registrado en este almacén.');
       }
 
       this.validacionService.validateNombre(dto.nombre);
       this.validacionService.validateDescripcion(dto.descripcion);
-      this.validacionService.validateCodigoBarra(dto.codigobarra);
-      this.validacionService.validatePrecio(dto.precioventa); // Cambia aquí
+      this.validacionService.validatePrecio(dto.precioventa);
 
       if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== null) {
         this.validacionService.validatePrecio(dto.preciodeproveedor);
@@ -124,15 +133,14 @@ export class ProductosService {
         data: {
           nombre: dto.nombre,
           descripcion: dto.descripcion,
-          codigobarra: dto.codigobarra,
-          precioventa: dto.precioventa, // Guardar aquí el precio por kilo/litro
+          codigobarra: dto.codigobarra, // Será null si venía vacío
+          precioventa: dto.precioventa,
           unidaddemedida: dto.unidaddemedida,
           preciodeproveedor: dto.preciodeproveedor,
           esgranel: true,
           fotoUrl,
           Id_almacen: dto.Id_almacen,
           Id_categoria: dto.Id_categoria && dto.Id_categoria.trim() !== "" ? dto.Id_categoria : null,
-          // No guardar en preciokilo
           preciokilo: null
         },
       });
