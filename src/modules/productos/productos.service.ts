@@ -40,10 +40,7 @@ export class ProductosService {
         }
       }
 
-      // Limpia codigobarra vacío
-      if (!dto.codigobarra || dto.codigobarra.trim() === '') {
-        dto.codigobarra = undefined;
-      }
+
 
       // Validar duplicidad solo si hay codigobarra
       if (dto.codigobarra) {
@@ -158,12 +155,11 @@ export class ProductosService {
       include: { almacen: true }
     });
     if (!producto) throw new BadRequestException('El producto no existe.');
-
     if (!producto.almacen) throw new BadRequestException('El producto no tiene un almacén asignado.');
 
     const dataUpdate: any = {};
 
-    // Validación y asignación de categoría
+    // Validación y asignación de categoría (opcional)
     if (dto.Id_categoria !== undefined) {
       const idCat = dto.Id_categoria?.trim?.() || null;
       if (!idCat) {
@@ -179,9 +175,17 @@ export class ProductosService {
       }
     }
 
+    // Nombre y descripción (opcional)
     if (dto.nombre !== undefined && dto.nombre !== "") dataUpdate.nombre = dto.nombre;
     if (dto.descripcion !== undefined && dto.descripcion !== "") dataUpdate.descripcion = dto.descripcion;
-    if (dto.codigobarra !== undefined && dto.codigobarra !== "") dataUpdate.codigobarra = dto.codigobarra;
+
+    // Código de barra (opcional)
+    if (dto.codigobarra !== undefined) {
+      // Si viene vacío, guarda null; si viene string con valor, guarda ese valor
+      dataUpdate.codigobarra = dto.codigobarra && dto.codigobarra.trim() !== "" ? dto.codigobarra : null;
+    }
+
+    // Otros campos opcionales
     if (dto.precioventa !== undefined && dto.precioventa !== null && !isNaN(Number(dto.precioventa))) {
       dataUpdate.precioventa = Number(dto.precioventa);
     }
@@ -203,7 +207,7 @@ export class ProductosService {
       }
     }
 
-    // Opcional: si quieres limpiar preciokilo SIEMPRE para mantener datos limpios
+    // Limpia preciokilo siempre para mantener datos limpios
     dataUpdate.preciokilo = null;
 
     return await this.prisma.producto.update({

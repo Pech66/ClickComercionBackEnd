@@ -12,7 +12,7 @@ export class DtoEditarProducto {
 
   @IsOptional()
   @IsString()
-  codigobarra?: string | null | undefined;
+  codigobarra?: string | null; // ← Solo string o null (no necesitas | undefined)
 
   @IsOptional()
   @Type(() => Number)
@@ -26,7 +26,7 @@ export class DtoEditarProducto {
 
   @IsOptional()
   @IsString()
-  Id_categoria?: string;
+  Id_categoria?: string | null; // ← Solo string o null
 
   @IsOptional()
   @IsString()

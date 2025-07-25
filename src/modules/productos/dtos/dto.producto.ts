@@ -13,7 +13,6 @@ export class DtoProductoNormal {
   descripcion?: string;
 
   @IsString()
-  @IsOptional()
   @ApiProperty({ example: 'D4GH5J6K7L8M9N0', required: false })
   codigobarra?: string;
 
