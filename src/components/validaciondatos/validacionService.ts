@@ -104,7 +104,7 @@ export class ValidacionService {
         return true;
     }
 
-   
+
 
     validateCodigoBarra(codigoBarra?: string): boolean {
         if (codigoBarra === undefined || codigoBarra === null || codigoBarra.trim() === '') {
@@ -114,6 +114,17 @@ export class ValidacionService {
         // Si quieres validar longitud, agrega aquí
         if (!codigoBarraContexto.test(codigoBarra)) {
             throw new Error('El código de barras solo puede contener números y letras.');
+        }
+        return true;
+    }
+
+    validateDescripcion(descripcion?: string): string | true {
+        if (!descripcion || descripcion.trim() === '') {
+            return true; // Opcional, así que es válido
+        }
+        const descripcionContexto = /^[a-zA-Z0-9\s.,;:!?-]+$/;
+        if (!descripcionContexto.test(descripcion)) {
+            return 'La descripción solo puede contener letras, números y estos símbolos: . , ; : ! ? -';
         }
         return true;
     }
