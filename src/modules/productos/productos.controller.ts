@@ -223,8 +223,6 @@ export class ProductosController {
       // Validaciones extra
       if (dto.nombre)
         this.validacionService.validateNombre(dto.nombre);
-      if (dto.descripcion)
-        this.validacionService.validateDescripcion(dto.descripcion);
       if (dto.codigobarra)
         this.validacionService.validateCodigoBarra(dto.codigobarra);
 
@@ -293,8 +291,7 @@ export class ProductosController {
       // Validaciones extra
       if (dto.nombre)
         this.validacionService.validateNombre(dto.nombre);
-      if (dto.descripcion)
-        this.validacionService.validateDescripcion(dto.descripcion);
+      
       if (dto.codigobarra)
         this.validacionService.validateCodigoBarra(dto.codigobarra);
 
