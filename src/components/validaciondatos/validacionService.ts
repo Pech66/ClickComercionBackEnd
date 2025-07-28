@@ -105,15 +105,17 @@ export class ValidacionService {
     }
 
     validateDescripcion(descripcion?: string): boolean {
-        if (descripcion === undefined || descripcion === null || descripcion.trim() === '') {
+        // La descripción es opcional
+        if (!descripcion || descripcion.trim() === '') {
             return true;
         }
         const descripcionContexto = /^[a-zA-Z0-9\s.,;:!?-]+$/;
         if (!descripcionContexto.test(descripcion)) {
-            throw new Error('La descripción solo puede contener letras, números y algunos caracteres especiales como .,;:!?-');
+            throw new Error('La descripción solo puede contener letras, números y ciertos caracteres especiales (.,;:!?-)');
         }
         return true;
     }
+
 
     validateCodigoBarra(codigoBarra?: string): boolean {
         if (codigoBarra === undefined || codigoBarra === null || codigoBarra.trim() === '') {
