@@ -11,11 +11,12 @@ import { Roles } from 'src/components/roles/roles.decorator';
 import { RolesGuard } from 'src/components/roles/roles.guard';
 import { Rol } from 'src/components/roles/roles.enum';
 import { DtoProductoGranel } from './dtos/dto.productoganel';
-import { DtoEditarProducto } from './dtos/dto.editarproductoNormal';
 import { DtoProductoNormal } from './dtos/dto.producto';
 import { PerfilService } from '../perfil/perfil.service';
 import { buffer } from 'stream/consumers';
 import { AuthGuard } from '@nestjs/passport';
+import { DtoEditarProductoGranel } from './dtos/DtoEditarProductoGranel';
+import { DtoEditarProductoNormal } from './dtos/dto.editarproductoNormal';
 
 @ApiTags('Productos')
 @Controller('Productos')
@@ -163,37 +164,37 @@ export class ProductosController {
     }
   }
 
-  @Put('editar/:idProducto')
-  @ApiOperation({ summary: 'Editar un producto' })
+  @Put('editar-normal/:idProducto')
+  @ApiOperation({ summary: 'Editar un producto normal' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({
     name: 'idProducto',
-    description: 'ID del producto a editar',
+    description: 'ID del producto normal a editar',
     example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd'
   })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        nombre: { type: 'string', example: 'Laptop Dell XPS 13', nullable: true, description: 'Nombre del producto' },
-        descripcion: { type: 'string', example: 'Laptop Dell XPS 13 con Intel i7...', nullable: true, description: 'Descripción del producto' },
-        codigobarra: { type: 'string', example: 'D4GH5J6K7L8M9N0', nullable: true, description: 'Código de barras del producto' },
-        precioventa: { type: 'number', example: 1200.50, nullable: true, description: 'Precio de venta' },
-        preciodeproveedor: { type: 'number', example: 1000.00, nullable: true, description: 'Precio del proveedor' },
-        Id_categoria: { type: 'string', example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd', nullable: true, description: 'ID de la categoría (opcional)' },
-        unidaddemedida: { type: 'string', example: 'kg', nullable: true, description: 'Unidad de medida (kg, gramos, litros, etc.)' },
-        foto: { type: 'string', format: 'binary', description: 'Archivo de imagen del producto', nullable: true }
+        nombre: { type: 'string', example: 'Laptop Dell XPS 13', nullable: true },
+        descripcion: { type: 'string', example: 'Laptop Dell XPS 13 con Intel i7...', nullable: true },
+        codigobarra: { type: 'string', example: 'D4GH5J6K7L8M9N0', nullable: true },
+        precioventa: { type: 'number', example: 1200.50, nullable: true },
+        preciodeproveedor: { type: 'number', example: 1000.00, nullable: true },
+        Id_categoria: { type: 'string', example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd', nullable: true },
+        foto: { type: 'string', format: 'binary', nullable: true }
       }
     }
   })
   @UseInterceptors(FileInterceptor('foto'))
-  async editarProducto(
+  async editarProductoNormal(
     @Param('idProducto') idProducto: string,
-    @Body() dtoEditarProducto: DtoEditarProducto,
+    @Body() dto: DtoEditarProductoNormal,
     @UploadedFile() file: Express.Multer.File,
     @UsuarioActual() usuario,
   ) {
     try {
+      // Validación y permisos igual que antes...
       const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
       if (!user?.Id_tienda) throw new BadRequestException('Debes crear una tienda primero.');
 
@@ -219,19 +220,87 @@ export class ProductosController {
         }
       }
 
-      // Validar nombre si viene
-      if (dtoEditarProducto.nombre)
-        this.validacionService.validateNombre(dtoEditarProducto.nombre);
-      // Validar descripcion si viene
-      if (dtoEditarProducto.descripcion)
-        this.validacionService.validateDescripcion(dtoEditarProducto.descripcion);
-      // Validar codigobarra si viene
-      if (dtoEditarProducto.codigobarra)
-        this.validacionService.validateCodigoBarra(dtoEditarProducto.codigobarra);
+      // Validaciones extra
+      if (dto.nombre)
+        this.validacionService.validateNombre(dto.nombre);
+      if (dto.descripcion)
+        this.validacionService.validateDescripcion(dto.descripcion);
+      if (dto.codigobarra)
+        this.validacionService.validateCodigoBarra(dto.codigobarra);
 
-      return this.productoService.editarProducto(idProducto, dtoEditarProducto, fotoUrl ?? undefined);
+      return this.productoService.editarProductoNormal(idProducto, dto, fotoUrl ?? undefined);
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al editar el producto.');
+      throw new BadRequestException(error.message || 'Error al editar el producto normal.');
+    }
+  }
+
+  @Put('editar-granel/:idProducto')
+  @ApiOperation({ summary: 'Editar un producto granel' })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({
+    name: 'idProducto',
+    description: 'ID del producto granel a editar',
+    example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd'
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', example: 'Arroz', nullable: true },
+        descripcion: { type: 'string', example: 'Arroz a granel', nullable: true },
+        codigobarra: { type: 'string', example: 'D4GH5J6K7L8M9N0', nullable: true },
+        precioventa: { type: 'number', example: 25.50, nullable: true },
+        Id_categoria: { type: 'string', example: 'e17ef0e6-b1a8-46cf-9f1f-2f75e69b3dcd', nullable: true },
+        unidaddemedida: { type: 'string', example: 'kg', nullable: true },
+        foto: { type: 'string', format: 'binary', nullable: true }
+      }
+    }
+  })
+  @UseInterceptors(FileInterceptor('foto'))
+  async editarProductoGranel(
+    @Param('idProducto') idProducto: string,
+    @Body() dto: DtoEditarProductoGranel,
+    @UploadedFile() file: Express.Multer.File,
+    @UsuarioActual() usuario,
+  ) {
+    try {
+      // Validación y permisos igual que antes...
+      const user = await this.perfilService.obtenerUsuarioPorId(usuario.id);
+      if (!user?.Id_tienda) throw new BadRequestException('Debes crear una tienda primero.');
+
+      const producto = await this.prisma.producto.findUnique({
+        where: { Id: idProducto },
+        include: { categoria: true, almacen: true }
+      });
+      if (!producto) throw new BadRequestException('El producto no existe.');
+      if (!producto.Id_almacen) throw new BadRequestException('El producto no tiene un almacén asignado.');
+
+      const almacen = await this.prisma.almacen.findUnique({ where: { Id: producto.Id_almacen } });
+      if (!almacen || almacen.Id_tienda !== user.Id_tienda) {
+        throw new BadRequestException('No tienes permiso para modificar este producto.');
+      }
+
+      let fotoUrl = producto.fotoUrl;
+      if (file) {
+        try {
+          const resultado = await this.cloudinaryService.uploadFile(file);
+          fotoUrl = resultado.secure_url;
+        } catch (error) {
+          throw new BadRequestException('Error al subir la imagen');
+        }
+      }
+
+      // Validaciones extra
+      if (dto.nombre)
+        this.validacionService.validateNombre(dto.nombre);
+      if (dto.descripcion)
+        this.validacionService.validateDescripcion(dto.descripcion);
+      if (dto.codigobarra)
+        this.validacionService.validateCodigoBarra(dto.codigobarra);
+
+      return this.productoService.editarProductoGranel(idProducto, dto, fotoUrl ?? undefined);
+    } catch (error) {
+      throw new BadRequestException(error.message || 'Error al editar el producto granel.');
     }
   }
 
@@ -404,4 +473,7 @@ export class ProductosController {
     }
   }
 
+
+
+  
 }

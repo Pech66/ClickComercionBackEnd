@@ -1,7 +1,7 @@
 import { IsOptional, IsString, IsNumber } from "class-validator";
 import { Type } from "class-transformer";
 
-export class DtoEditarProductoNormal {
+export class DtoEditarProductoGranel {
   @IsOptional()
   @IsString()
   nombre?: string;
@@ -20,13 +20,12 @@ export class DtoEditarProductoNormal {
   precioventa?: number;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  preciodeproveedor?: number;
+  @IsString()
+  Id_categoria?: string | null;
 
   @IsOptional()
   @IsString()
-  Id_categoria?: string | null;
+  unidaddemedida?: string;
 
   @IsOptional()
   @IsString()

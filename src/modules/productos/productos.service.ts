@@ -3,8 +3,9 @@ import { CloudinaryService } from 'src/service/cloudinary/cloudinary.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoProductoGranel } from './dtos/dto.productoganel';
 import { DtoProductoNormal } from './dtos/dto.producto';
-import { DtoEditarProducto } from './dtos/dto.editarproductoNormal';
 import { ValidacionService } from 'src/components/validaciondatos/validacionService';
+import { DtoEditarProductoGranel } from './dtos/DtoEditarProductoGranel';
+import { DtoEditarProductoNormal } from './dtos/dto.editarproductoNormal';
 function isValidNumberField(val: unknown): val is number {
   if (val === "") return false;
   if (val === undefined || val === null) return false;
@@ -148,8 +149,7 @@ export class ProductosService {
     }
   }
 
-  async editarProducto(id: string, dto: DtoEditarProducto, fotoUrl?: string) {
-    // Buscar el producto y validar existencia
+  async editarProductoNormal(id: string, dto: DtoEditarProductoNormal, fotoUrl?: string) {
     const producto = await this.prisma.producto.findUnique({
       where: { Id: id },
       include: { almacen: true }
@@ -159,55 +159,27 @@ export class ProductosService {
 
     const dataUpdate: any = {};
 
-    // Validación y asignación de categoría (opcional)
+    if (dto.nombre) dataUpdate.nombre = dto.nombre;
+    if (dto.descripcion) dataUpdate.descripcion = dto.descripcion;
+    if (dto.codigobarra !== undefined) dataUpdate.codigobarra = dto.codigobarra?.trim() || null;
+    if (dto.precioventa !== undefined) dataUpdate.precioventa = Number(dto.precioventa);
+    if (dto.preciodeproveedor !== undefined) dataUpdate.preciodeproveedor = Number(dto.preciodeproveedor);
+
     if (dto.Id_categoria !== undefined) {
       const idCat = dto.Id_categoria?.trim?.() || null;
       if (!idCat) {
         dataUpdate.Id_categoria = null;
       } else {
-        const categoriaExiste = await this.prisma.categoria.findUnique({
-          where: { Id: idCat }
-        });
-        if (!categoriaExiste) {
-          throw new BadRequestException('La categoría seleccionada no existe.');
-        }
+        const categoriaExiste = await this.prisma.categoria.findUnique({ where: { Id: idCat } });
+        if (!categoriaExiste) throw new BadRequestException('La categoría seleccionada no existe.');
         dataUpdate.Id_categoria = idCat;
       }
     }
 
-    // Nombre y descripción (opcional)
-    if (dto.nombre !== undefined && dto.nombre !== "") dataUpdate.nombre = dto.nombre;
-    if (dto.descripcion !== undefined && dto.descripcion !== "") dataUpdate.descripcion = dto.descripcion;
-
-    // Código de barra (opcional)
-    if (dto.codigobarra !== undefined) {
-      // Si viene vacío, guarda null; si viene string con valor, guarda ese valor
-      dataUpdate.codigobarra = dto.codigobarra && dto.codigobarra.trim() !== "" ? dto.codigobarra : null;
-    }
-
-    // Otros campos opcionales
-    if (dto.precioventa !== undefined && dto.precioventa !== null && !isNaN(Number(dto.precioventa))) {
-      dataUpdate.precioventa = Number(dto.precioventa);
-    }
-    if (dto.preciodeproveedor !== undefined && dto.preciodeproveedor !== null && !isNaN(Number(dto.preciodeproveedor))) {
-      dataUpdate.preciodeproveedor = Number(dto.preciodeproveedor);
-    }
-    if (dto.unidaddemedida !== undefined && dto.unidaddemedida !== "") dataUpdate.unidaddemedida = dto.unidaddemedida;
-    if (dto.esgranel !== undefined) dataUpdate.esgranel = dto.esgranel;
     if (fotoUrl !== undefined) dataUpdate.fotoUrl = fotoUrl;
 
-    // Reglas para alternar normal <-> granel
-    if (dto.esgranel !== undefined && dto.esgranel !== producto.esgranel) {
-      if (dto.esgranel) {
-        // Ahora es granel: solo importa precioventa y unidaddemedida
-        dataUpdate.unidaddemedida = dto.unidaddemedida || null;
-      } else {
-        // Ahora es normal: limpia unidaddemedida
-        dataUpdate.unidaddemedida = null;
-      }
-    }
-
-    // Limpia preciokilo siempre para mantener datos limpios
+    dataUpdate.unidaddemedida = null;
+    dataUpdate.esgranel = false;
     dataUpdate.preciokilo = null;
 
     return await this.prisma.producto.update({
@@ -215,6 +187,46 @@ export class ProductosService {
       data: dataUpdate
     });
   }
+
+  async editarProductoGranel(id: string, dto: DtoEditarProductoGranel, fotoUrl?: string) {
+    const producto = await this.prisma.producto.findUnique({
+      where: { Id: id },
+      include: { almacen: true }
+    });
+    if (!producto) throw new BadRequestException('El producto no existe.');
+    if (!producto.almacen) throw new BadRequestException('El producto no tiene un almacén asignado.');
+
+    const dataUpdate: any = {};
+
+    if (dto.nombre) dataUpdate.nombre = dto.nombre;
+    if (dto.descripcion) dataUpdate.descripcion = dto.descripcion;
+    if (dto.codigobarra !== undefined) dataUpdate.codigobarra = dto.codigobarra?.trim() || null;
+    if (dto.precioventa !== undefined) dataUpdate.precioventa = Number(dto.precioventa);
+
+    if (dto.Id_categoria !== undefined) {
+      const idCat = dto.Id_categoria?.trim?.() || null;
+      if (!idCat) {
+        dataUpdate.Id_categoria = null;
+      } else {
+        const categoriaExiste = await this.prisma.categoria.findUnique({ where: { Id: idCat } });
+        if (!categoriaExiste) throw new BadRequestException('La categoría seleccionada no existe.');
+        dataUpdate.Id_categoria = idCat;
+      }
+    }
+
+    if (fotoUrl !== undefined) dataUpdate.fotoUrl = fotoUrl;
+
+    dataUpdate.unidaddemedida = dto.unidaddemedida || null;
+    dataUpdate.esgranel = true;
+    dataUpdate.preciodeproveedor = null;
+    dataUpdate.preciokilo = null;
+
+    return await this.prisma.producto.update({
+      where: { Id: id },
+      data: dataUpdate
+    });
+  }
+
 
   // Obtener producto por ID (ya cumple multi-inquilino)
   async obtenerProductoPorId(idProducto: string, idTienda: string) {
@@ -273,4 +285,8 @@ export class ProductosService {
     await this.prisma.producto.delete({ where: { Id: idProducto } });
     return { message: 'Producto eliminado correctamente' };
   }
+
+
+
+  
 }
